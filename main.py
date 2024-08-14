@@ -20,7 +20,7 @@ llm4o_mini = ChatOpenAI(model="gpt-4o-mini")
 class StudentData:
     def __init__(self, row):
         self.name = row['Nombre completo']
-        self.school = ''  # Asumiendo que esto no está proporcionado en la hoja de Excel
+        self.school = 'Valdebebas'  # Asumiendo que esto no está proporcionado en la hoja de Excel
         self.course = row['Cursos']
         self.group = ''  # Asumiendo que esto no está proporcionado en la hoja de Excel
         self.term = row.get('TERM 1', '')  # Asumiendo que TERM 1 es el predeterminado, ajusta según sea necesario
@@ -35,7 +35,7 @@ class StudentData:
         self.takes_initiative = row['Toma iniciativa']
         self.preferred_activities = row['Actividades preferidas']
         self.understands = ''
-        self.professor = ''  
+        self.professor = 'Julia'  
         self.absences = 0  # Asumiendo que esto no está proporcionado en la hoja de Excel
         self.listening_frequency = 'Suficiente'  # Asumiendo que esto no está proporcionado en la hoja de Excel
         self.oral_test_score = ''  # Asumiendo que esto no está proporcionado en la hoja de Excel
@@ -175,33 +175,43 @@ class ReportAutomation:
         self.page.goto(URL)
         self.page.fill('#login_user', self.username)
         self.page.fill('#login_pass', self.password)
-        self.page.click('.form_login button[type="submit"]')
+        self.page.click('#login_button')
         self.page.wait_for_load_state('networkidle')
 
     def select_school(self, school_name):
-        school_selector = f'.li_school[data-name="{school_name}"]'
+        school_selector = f'.li_school:has-text("{school_name}")'
         self.page.click(school_selector)
 
     def select_course(self, course_name):
         course_selector = f'.li_course:has-text("{course_name}")'
         self.page.click(course_selector)
 
-    def select_group(self, group_name):
-        group_selector = f'.li_group[data-name="{group_name}"]'
-        self.page.click(group_selector)
+    def select_group(self, professor):
+        group_selector = f'.li_group'
+        elements = self.page.query_selector_all(group_selector)
+        print(elements)
+        
+        for element in elements:
+            text = element.inner_text()
+            print(f"Checking element with text: {text}")  # Debugging line
+            if professor.lower() in text.lower():
+                element.click()
+                break
+
 
     def click_begin(self):
         self.page.click('#selector_button')
         self.page.wait_for_load_state('networkidle')
 
     def navigate_to_term_reports(self):
-        self.page.click('a[href="termreports.html"]')
+        self.page.click('.hamb')
+        self.page.click('.menu_obj2')
         self.page.wait_for_load_state('networkidle')
 
-    def navigate_to_reports(self, school, course, group):
+    def navigate_to_reports(self, school, course, professor):
         self.select_school(school)
         self.select_course(course)
-        self.select_group(group)
+        self.select_group(professor)
         self.click_begin()
         self.navigate_to_term_reports()
 
@@ -247,17 +257,16 @@ def main():
     automation = ReportAutomation(username, password)
 
     try:
-        # automation.login()
+        automation.login()
 
         for student in load_students():
-            print(student)
-            # automation.navigate_to_reports(student.school, student.course, student.group)
+            automation.navigate_to_reports(student.school, student.course, student.professor)
             report = generar_reporte(student)
             
-            # automation.enter_report(student.name, student.term, report)
+            automation.enter_report(student.name, student.term, report)
             
             print(f"Reporte enviado para {student.name}")
-            time.sleep(2)  # Pausa para evitar sobrecargar el servidor
+            time.sleep(2) 
 
     except Exception as e:
         print(f"Ha ocurrido un error: {e}")
