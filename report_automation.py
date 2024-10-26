@@ -1,6 +1,7 @@
 from playwright.sync_api import sync_playwright
 import time
 
+
 class ReportAutomation:
     def __init__(self, username, password):
         self.username = username
@@ -25,8 +26,11 @@ class ReportAutomation:
         self.page.click(course_selector)
 
     def select_group(self, professor):
-        group_selector = f'.li_group'
+        group_selector = '.li_group'
+        self.page.wait_for_selector(group_selector, timeout=10000)  # Wait for the elements to be visible
         elements = self.page.query_selector_all(group_selector)
+        print(f"Found {len(elements)} groups.")
+        
         for element in elements:
             text = element.inner_text()
             if professor.lower() in text.lower():
@@ -38,9 +42,18 @@ class ReportAutomation:
         self.page.wait_for_load_state('networkidle')
 
     def navigate_to_term_reports(self):
-        self.page.click('.hamb')
-        self.page.click('.menu_obj2')
+    # Ensure the menu is visible and clickable
+        self.page.wait_for_selector('.hamb', timeout=10000)  # Adjust the selector to the correct button
+        self.page.click('.hamb')  # Click on the dropdown menu to make it visible
+
+        # Wait for the specific "Term Reports" option
+        term_reports_selector = 'div.menu_obj2:has-text("Term Reports")'
+        self.page.wait_for_selector(term_reports_selector, timeout=10000)  # Ensure "Term Reports" is visible
+
+        # Click on the "Term Reports" button
+        self.page.click(term_reports_selector)
         self.page.wait_for_load_state('networkidle')
+
 
     def navigate_to_reports(self, school, course, professor):
         self.select_school(school)
@@ -50,7 +63,9 @@ class ReportAutomation:
         self.navigate_to_term_reports()
 
     def enter_report(self, student_name, term, report):
-        student_row = self.page.locator(f'tr:has-text("{student_name}")')
+        print(student_name)
+        student_row = self.page.locator(f'tr:has-text("{'Jimena'}")')
+        print(student_row)
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
         edit_button = student_row.locator(f'td:nth-child({term_column + 1}) .edit-icon')
         edit_button.click()

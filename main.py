@@ -12,7 +12,7 @@ app = Flask(__name__)
 URL = "https://myclassroom.kidsandus.es"
 ALLOWED_EXTENSIONS = {'xlsx'}
 
-os.environ["OPENAI_API_KEY"] = "sk-proj-NjHbqyLxpNxiSaFScgZ6T3BlbkFJiQMnjU87TfIHSBZPSsMR"
+os.environ["OPENAI_API_KEY"] = "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"
 os.environ["SERPER_API_KEY"] = "88ae5974658b41cd2af65d4064455f9b9b3f57e4"
 os.environ['CLAUDE_API_KEY'] = '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'
 
@@ -31,70 +31,101 @@ def upload_file():
             filename = secure_filename(file.filename)
             username = request.form.get('username')
             password = request.form.get('password')
-            
-            # Read the file directly into memory
+
+            # Leer todas las hojas del archivo Excel, omitiendo la primera fila
             file_content = file.read()
-            df = pd.read_excel(io.BytesIO(file_content))
-            
-            # Process reports
-            process_reports(df, username, password)
-            
+            df_dict = pd.read_excel(io.BytesIO(file_content), sheet_name=None, header=1)  # Empezar desde la segunda fila
+
+            # Procesar informes para cada hoja (categoría)
+            process_reports(df_dict, username, password)
+
             return "Reports generated and uploaded successfully."
     return render_template('upload.html')
 
-def process_reports(df, username, password):
+def process_reports(df_dict, username, password):
     automation = ReportAutomation(username, password)
     try:
         automation.login()
-        for _, row in df.iterrows():
-            student = StudentData(row)
-            automation.navigate_to_reports(student.school, student.course, student.professor)
-            report = generar_reporte(student)
-            automation.enter_report(student.name, student.term, report)
-            print(f"Report sent for {student.name}")
+
+        # Iterar sobre cada hoja (categoría)
+        for category, df in df_dict.items():
+            df = df.dropna(how='all')  # Eliminar filas vacías
+            df.columns = df.columns.str.strip()  # Limpiar espacios en blanco en los nombres de las columnas
+            print(f"Procesando la categoría: {category}")
+            for _, row in df.iterrows():
+                student = StudentData(row, category)
+                automation.navigate_to_reports(student.school, student.course, student.professor)
+                report = generar_reporte(student)
+                automation.enter_report(student.name, student.term, report)
+                print(f"Report sent for {student.name} in {category}")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
         automation.close()
 
-class StudentData:
-    def __init__(self, row):
-        self.name = row['Nombre completo']
-        self.school = 'Valdebebas'
-        self.course = row['Cursos']
-        self.group = ''
-        self.term = row.get('TERM 1', '')
-        self.schedule = row['Horario']
-        self.term1 = row['TERM 1']
-        self.term2 = row.get('TERM 2', '')
-        self.term3 = row.get('TERM 3', '')
-        self.participates = row['Participa']
-        self.enters_happy = row['Entra contento a clase']
-        self.positive_attitude = row['Actitud positiva']
-        self.enthusiasm = row['Entusiasmo']
-        self.takes_initiative = row['Toma iniciativa']
-        self.preferred_activities = row['Actividades preferidas']
-        self.understands = ''
-        self.professor = 'Julia'
-        self.absences = 0
-        self.listening_frequency = 'Suficiente'
-        self.oral_test_score = ''
-        self.writing_score = ''
-        self.homework_score = ''
-        self.uses_key_words = ''
-        self.makes_complete_structures = row['Hace estructuras completas']
-        self.example_sentences = row['Ejemplo de oraciones que hace']
-        self.good_pronunciation = row['Buena pronunciación']
-        self.efforts_to_communicate = row['Se esfuerza por comunicarse en inglés']
-        self.confident_expression = row['Se expresa con seguridad']
-        self.asks_questions = row['Pregunta dudas']
-        self.helps_teacher = row['Ayuda a la profe']
-        self.has_friends_in_class = row['Tiene amigos en clase']
-        self.gets_distracted = row['Se distrae']
-        self.collaborates_with_peers = row['Colabora con compañeros']
-        self.follows_instructions = row['Sigue instrucciones']
-        self.respects_turns = row['Respeta turnos palabra']
-        self.cares_for_materials = row['Cuida material']
+class StudentData: 
+    def __init__(self, row, category):
+        self.name = row.get('Nombre completo', '')
+        self.course = row.get('Cursos', '')
+        self.professor = 'Mario'
+        self.school = row.get('Bloque', '')
+        self.schedule = row.get('Horario', '')
+        self.audio_listening_frequency = row.get('Audio Listening Frequency', '')
+        self.oral_test_score = row.get('Oral Test Score', '')
+        self.oral_test_comment = row.get('Comentario oral test', '')
+        self.written_test_score = row.get('Written Test Score', '')
+        self.written_test_comment = row.get('Comentario written test', '')
+        self.motivation_participation_rating = row.get('Motivation & Participation: rating', '')
+        self.participates = row.get('Motivation & Participation: Participa', '')
+        self.enters_happy = row.get('Motivation & Participation: Entra contento a clase', '')
+        self.positive_attitude = row.get('Motivation & Participation: Actitud positiva', '')
+        self.enthusiasm = row.get('Motivation & Participation: Entusiasmo', '')
+        self.takes_initiative = row.get('Motivation & Participation: Toma iniciativa', '')
+        self.dances_to_songs = row.get('Motivation & Participation: baila las canciones', '')
+        self.differentiator = row.get('Motivation & Participation: Dato diferenciador', '')
+        self.improvement_points = row.get('Motivation & Participation: puntos a mejorar', '')
+        self.strong_points = row.get('Motivation & Participation: puntos fuertes', '')
+        self.preferred_activities = row.get('Motivation & Participation: Actividades preferidas', '')
+        self.learning_rating = row.get('Learning: rating', '')
+        self.understands = row.get('Learning: Comprende', '')
+        self.uses_keywords = row.get('Learning: Usa palabaras clave', '')
+        self.makes_complete_structures = row.get('Learning: Hace estructuras completas', '')
+        self.example_sentences = row.get('Learning: Ejemplo de oraciones que hace', '')
+        self.good_pronunciation = row.get('Learning: Buena pronunciación', '')
+        self.efforts_to_communicate = row.get('Learning: Se esfuerza por comunicarse en inglés', '')
+        self.confident_expression = row.get('Learning: Se expresa con seguridad', '')
+        self.spells_correctly = row.get('Learning: puede deletrear correctamente', '')
+        self.learning_strong_points = row.get('Learning: puntos fuertes', '')
+        self.learning_improvement_points = row.get('Learning: puntos a mejorar', '')
+        self.asks_questions = row.get('Learning: Pregunta dudas', '')
+        self.behavior_rating = row.get('Behaviour: rating', '')
+        self.helps_teacher = row.get('Behaviour: Ayuda a la profe', '')
+        self.has_friends_in_class = row.get('Behaviour: Tiene amigos en clase', '')
+        self.gets_distracted = row.get('Behaviour: Se distrae', '')
+        self.collaborates_with_peers = row.get('Behaviour: Colabora con compañeros', '')
+        self.follows_instructions = row.get('Behaviour: Sigue instrucciones', '')
+        self.respects_turns = row.get('Behaviour: Respeta turnos palabra', '')
+        self.cares_for_materials = row.get('Behaviour: Cuida material', '')
+        self.misbehavior_action = row.get('Behaviour: qué se ha hecho si tiene mal comportamiento', '')
+        self.behavior_improvement_points = row.get('Behaviour: puntos a mejorar', '')
+        self.behavior_strong_points = row.get('Behaviour: puntos fuertes', '')
+        self.category = category  # Guardar la categoría (nombre de la hoja)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+
+
+'''
+Stripe Payment: Franchise completes payment via Stripe.
+Slack Channel Access: Automatically grant franchise access to their dedicated Slack channel.
+Upload Excel File: Franchise uploads the Excel file in the Slack channel.
+File Detection: Slack bot detects the file upload event.
+Send File to Dockerized Service: Slack bot sends the file to a Dockerized service running on Google Cloud Run.
+Process File with Playwright: The Docker container, equipped with Playwright, processes the Excel file, generates the report by interacting with a webpage.
+Generate Report on Webpage: Playwright automates the generation of the report within the webpage.
+Report to Slack: Slack bot notifies the generated report.
+'''
+
+
+
