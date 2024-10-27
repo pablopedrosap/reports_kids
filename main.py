@@ -6,6 +6,7 @@ import pandas as pd
 import io
 from report_generator import generar_reporte
 from report_automation import ReportAutomation
+import json
 
 app = Flask(__name__)
 
@@ -47,15 +48,36 @@ def process_reports(df_dict, username, password):
     try:
         automation.login()
 
-        # Iterar sobre cada hoja (categoría)
+        current_group = None
         for category, df in df_dict.items():
             df = df.dropna(how='all')  # Eliminar filas vacías
             df.columns = df.columns.str.strip()  # Limpiar espacios en blanco en los nombres de las columnas
             print(f"Procesando la categoría: {category}")
             for _, row in df.iterrows():
                 student = StudentData(row, category)
-                automation.navigate_to_reports(student.school, student.course, student.professor)
-                report = generar_reporte(student)
+                if student.group != current_group:
+                    # Update the current group and navigate
+                    current_group = student.group
+                    automation.navigate_to_reports(student.school, student.course, student.professor)
+                
+                # report = generar_reporte(student)
+                report = json.loads('''{
+    "Motivación_y_Participación": {
+        "Rating": "Excellent",
+        "Comment": "Pablo muestra una motivación sobresaliente en clase. Siempre entra contento y participa con gran entusiasmo en todas las actividades. Su actitud positiva es evidente, y no duda en tomar la iniciativa al proponer ideas y participar en dinámicas grupales. Pablo disfruta especialmente de cantar y bailar las canciones, lo cual fomenta un ambiente alegre y dinámico en el aula. Su capacidad para involucrarse en las actividades lo convierte en un líder natural entre sus compañeros."
+    },
+    "Aprendizaje": {
+        "Rating": "Very good",
+        "Comment": "En términos de aprendizaje, Pablo ha demostrado una comprensión excepcional. Utiliza estructuras completas en sus oraciones, como 'I am three' (Tengo tres años), lo que refleja su dominio del vocabulario y la gramática básica. Su capacidad para comprender instrucciones y usar palabras clave es notable, lo que le permite participar activamente en las discusiones. Aunque su pronunciación es buena, hay espacio para seguir mejorando, pero su esfuerzo por comunicarse en inglés es admirable."
+    },
+    "Comportamiento": {
+        "Rating": "Very good",
+        "Comment": "El comportamiento de Pablo es ejemplar. Siempre ayuda a la profesora y colabora de manera efectiva con sus compañeros. Respeta los turnos de palabra y sigue las instrucciones sin problemas, lo que contribuye a un ambiente de aprendizaje positivo. Aunque, en ocasiones, puede distraerse, su capacidad para regresar a la actividad es rápida. Este comportamiento proactivo y su disposición para ayudar lo hacen un alumno valioso en el aula."
+    },
+    "Nota_de_prueba_oral": "Pablo ha obtenido una nota de 9.1 en su prueba oral, lo que refleja su dedicación y habilidades de comunicación. Su buena pronunciación, junto con su confianza al hablar, le permite expresarse con claridad. Además, pregunta dudas cuando es necesario, demostrando su interés en profundizar su comprensión del idioma.",
+    "Evaluación_general": "En general, Pablo ha tenido un desempeño excelente durante este año escolar. Se recomienda que durante el verano continúe practicando su pronunciación y participe en actividades que le permitan seguir desarrollando su seguridad al comunicarse en inglés. Su actitud positiva y su entusiasmo son cruciales para su éxito continuo en el aprendizaje del idioma."
+}
+''')
                 automation.enter_report(student.name, student.term, report)
                 print(f"Report sent for {student.name} in {category}")
     except Exception as e:
@@ -68,8 +90,9 @@ class StudentData:
         self.name = row.get('Nombre completo', '')
         self.course = row.get('Cursos', '')
         self.professor = 'Mario'
+        self.term = 1
         self.school = row.get('Bloque', '')
-        self.schedule = row.get('Horario', '')
+        self.group = row.get('Horario', '')
         self.audio_listening_frequency = row.get('Audio Listening Frequency', '')
         self.oral_test_score = row.get('Oral Test Score', '')
         self.oral_test_comment = row.get('Comentario oral test', '')
