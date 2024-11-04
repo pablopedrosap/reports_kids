@@ -7,8 +7,12 @@ class ReportAutomation:
         self.username = username
         self.password = password
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=False)
+        self.browser = self.playwright.chromium.launch(
+        executable_path="/Users/pablopedrosa/Library/Caches/ms-playwright/chromium-1140/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+        headless=False
+        )
         self.page = self.browser.new_page()
+        
 
     def login(self):
         self.page.goto("https://myclassroom.kidsandus.es")
@@ -55,7 +59,9 @@ class ReportAutomation:
         self.page.wait_for_load_state('networkidle')
 
 
-    def navigate_to_reports(self, school, course, professor):
+    def navigate_to_reports(self, school, course, group):
+        print(school, course, group)
+        
         change_group_selector = 'span.change_link'  
         if self.page.locator(change_group_selector).is_visible():
             self.page.click(change_group_selector)
@@ -64,7 +70,7 @@ class ReportAutomation:
 
         self.select_school(school)
         self.select_course(course)
-        self.select_group(professor)
+        self.select_group(group)
         self.click_begin()
         self.navigate_to_term_reports()
 
@@ -72,7 +78,7 @@ class ReportAutomation:
 
     def enter_report(self, student_name, term, report):
         print(student_name)
-        student_row = self.page.locator(f'tr:has(td.td_left:has-text("Diego"))')
+        student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         print(student_row)
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
