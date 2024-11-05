@@ -46,7 +46,6 @@ class ReportAutomation:
         self.page.wait_for_load_state('networkidle')
 
     def navigate_to_term_reports(self):
-    # Ensure the menu is visible and clickable
         self.page.wait_for_selector('.hamb', timeout=10000)  # Adjust the selector to the correct button
         self.page.click('.hamb')  # Click on the dropdown menu to make it visible
 
@@ -61,6 +60,8 @@ class ReportAutomation:
 
     def navigate_to_reports(self, school, course, group):
         print(school, course, group)
+
+        print(school)
         
         change_group_selector = 'span.change_link'  
         if self.page.locator(change_group_selector).is_visible():
@@ -137,9 +138,9 @@ class ReportAutomation:
         # Save the report
         save_button_selector = 'div.homework_buttons .whitebutton2'
         # Uncomment the next line to click the save button
-        # await self.page.click(save_button_selector)
+        self.page.click(save_button_selector)
         
-        time.sleep(3)
+        time.sleep(1)
         self.page.go_back()
         self.page.wait_for_load_state('networkidle')
         print("Reporte guardado exitosamente.")
