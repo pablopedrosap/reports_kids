@@ -75,9 +75,73 @@ class ReportAutomation:
         self.click_begin()
         self.navigate_to_term_reports()
 
-        
+    def extract_scores(self, student_name, term, category):
+        print(f"Extracting scores for {student_name}")
+        student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
+        term_column = 1 if term == 1 else (2 if term == 2 else 3)
+        edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
+        edit_button.wait_for(timeout=10000)
+        edit_button.click()
 
-    def enter_report(self, student_name, term, report):
+        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=10000)
+
+        # Initialize scores dictionary
+        scores = {}
+
+        # Define section mappings based on category
+        section_mappings = {
+            'default': {
+                "Oral Test Score": 'oral_test_score',
+                "Written Test Score": 'written_test_score',
+                "Homework": 'homework_score'
+            },
+            'Tweens': {
+                "Oral Test Score": 'oral_test_score',
+                "Written Test Score": 'written_test_score',
+                "Homework": 'homework_score',
+                "Global Score": 'global_score'
+            },
+            'B&B': {
+                "Oral Test Score": 'oral_test_score',
+                "Written Test Score": 'written_test_score'
+            }
+        }
+
+        # Get the mapping for the current category
+        mappings = section_mappings.get(category, section_mappings['default'])
+
+        # Locate all sections
+        sections = self.page.locator('div.label_tr_skill, div.label_tr')
+        section_count = sections.count()
+
+        for i in range(section_count):
+            section = sections.nth(i)
+            section_title = section.inner_text().strip()
+
+            for key, attr_name in mappings.items():
+                if key in section_title:
+                    # Locate the input field for the score
+                    input_field = section.locator('xpath=following-sibling::input[@type="number"][1]')
+                    value = input_field.get_attribute('value')
+
+                    # Store the value in the scores dictionary
+                    scores[attr_name] = value
+
+                    # Extract the comment associated with that section
+                    textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr") or contains(@class, "textarea_div")][1]')
+                    comment_text = textarea_locator.input_value()
+                    scores[f"{attr_name}_comment"] = comment_text
+
+                    break  # No need to check other keys for this section
+
+        # Go back to the previous page
+        self.page.go_back()
+        self.page.wait_for_load_state('networkidle')
+
+        print(f"Extracted scores: {scores}")
+        return scores
+
+    def enter_report(self, student_name, term, report, category):
         print(student_name)
         student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         print(student_row)
@@ -86,34 +150,61 @@ class ReportAutomation:
         edit_button.wait_for(timeout=10000)
         edit_button.click()
 
-        self.page.wait_for_selector('.input_comment_tr', timeout=10000)
+        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=10000)
 
+        # Define section mappings based on category
+        section_mappings = {
+            'default': {
+                "Audio Listening Frequency": "Audio Listening Frequency",
+                "Motivation": "Motivación_y_Participación",
+                "Learning": "Aprendizaje",
+                "Behaviour": "Comportamiento",
+                "Oral Test Score": "Nota_de_prueba_oral",
+                "General Assessment": "Evaluación_general"
+            },
+            'Tweens': {
+                "Audio Listening Frequency": "Audio Listening Frequency",
+                "Behaviour": "Comportamiento",
+                "Work": "Trabajo",
+                "Performance": "Rendimiento",
+                "My Way": "My Way",
+                'Global Score': "Nota Global",
+                "Oral Test Score": "Nota_de_prueba_oral",
+                "Written Test Score": "Nota_de_prueba_escrita",
+                "Homework": "Deberes",
+                "General Assessment": "Evaluación_general"
+            },
+            'B&B': {
+                "Motivation": "Motivación_y_Participación",
+                "Learning": "Aprendizaje",
+                "Behaviour": "Comportamiento",
+                "Oral Test Score": "Nota_de_prueba_oral",
+                "Written Test Score": "Nota_de_prueba_escrita",
+                "General Assessment": "Evaluación_general"
+            }
+        }
+
+        # Get the mapping for the current category
+        mappings = section_mappings.get(category, section_mappings['default'])
+
+        # Adjust the section selector if necessary
         sections = self.page.locator('div.label_tr_skill, div.label_tr')
         section_count = sections.count()
 
         for i in range(section_count):
             section = sections.nth(i)
             section_title = (section.inner_text()).strip()
-            print(section_title)
+            print(f"Processing section: {section_title}")
 
             comment_text = ""
             select_value = None
+            section_key = None
 
-            # Determine the appropriate comment text and select value
-            if "Audio Listening Frequency" in section_title:
-                select_value = "Sufficient"
-            elif "Motivation" in section_title:
-                section_key = 'Motivación_y_Participación'
-            elif "Learning" in section_title:
-                section_key = 'Aprendizaje'
-            elif "Behaviour" in section_title:
-                section_key = 'Comportamiento'
-            elif "Oral Test Score" in section_title:
-                section_key = 'Nota_de_prueba_oral'
-            elif "General Assessment" in section_title:
-                section_key = 'Evaluación_general'
-            else:
-                section_key = None
+            # Map the section title to the report key
+            for key, report_key in mappings.items():
+                if key in section_title:
+                    section_key = report_key
+                    break
 
             if section_key:
                 section_data = report.get(section_key, {})
@@ -123,27 +214,30 @@ class ReportAutomation:
                 else:
                     comment_text = section_data
 
-            # Interact with the select element if applicable
-            if select_value:
-                select_locator = section.locator('xpath=following::select[contains(@class, "select_tr")][1]')
-                select_locator.select_option(label=select_value)
-                print(f"Selected '{select_value}' for section '{section_title}'")
+                # Interact with the select element if applicable
+                if select_value:
+                    select_locator = section.locator('xpath=following::select[contains(@class, "select_tr")][1]')
+                    select_locator.select_option(label=select_value)
+                    print(f"Selected '{select_value}' for section '{section_title}'")
 
-            # Fill in the comment if applicable
-            if comment_text:
-                textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr")][1]')
-                textarea_locator.fill(comment_text)
-                print(f"Added comment for '{section_title}': {comment_text}")
+                # Fill in the comment if applicable
+                if comment_text:
+                    textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr") or contains(@class, "textarea_div")][1]')
+                    textarea_locator.fill(comment_text)
+                    print(f"Added comment for '{section_title}': {comment_text}")
+
+            else:
+                print(f"No mapping found for section '{section_title}'. Skipping.")
 
         # Save the report
         save_button_selector = 'div.homework_buttons .whitebutton2'
-        # Uncomment the next line to click the save button
         self.page.click(save_button_selector)
-        
+
         time.sleep(1)
         self.page.go_back()
         self.page.wait_for_load_state('networkidle')
         print("Reporte guardado exitosamente.")
+
 
     def close(self):
         self.browser.close()
