@@ -22,6 +22,8 @@ class ReportAutomation:
         self.page.wait_for_load_state('networkidle')
 
     def select_school(self, school_name):
+        school_name = school_name.split(' ')[0]
+        print(school_name)
         school_selector = f'.li_school:has-text("{school_name}")'
         self.page.click(school_selector)
 
@@ -77,6 +79,8 @@ class ReportAutomation:
 
     def extract_scores(self, student_name, term, category):
         print(f"Extracting scores for {student_name}")
+
+
         student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
@@ -160,21 +164,22 @@ class ReportAutomation:
                 "Learning": "Aprendizaje",
                 "Behaviour": "Comportamiento",
                 "Oral Test Score": "Nota_de_prueba_oral",
+                "Written Test Score": "Nota_de_prueba_escrita",
                 "General Assessment": "Evaluación_general"
             },
-            'Tweens': {
+            'tweens': {
                 "Audio Listening Frequency": "Audio Listening Frequency",
                 "Behaviour": "Comportamiento",
                 "Work": "Trabajo",
                 "Performance": "Rendimiento",
-                "My Way": "My Way",
-                'Global Score': "Nota Global",
+                "My Way": "My_Way",
+                "Global Score": "Nota_Global",
                 "Oral Test Score": "Nota_de_prueba_oral",
                 "Written Test Score": "Nota_de_prueba_escrita",
                 "Homework": "Deberes",
                 "General Assessment": "Evaluación_general"
             },
-            'B&B': {
+            'b&b': {
                 "Motivation": "Motivación_y_Participación",
                 "Learning": "Aprendizaje",
                 "Behaviour": "Comportamiento",
@@ -185,8 +190,12 @@ class ReportAutomation:
         }
 
         # Get the mapping for the current category
-        mappings = section_mappings.get(category, section_mappings['default'])
-
+        print(category)
+        if 'tweens' in category.lower():
+            category = 'tweens' 
+        mappings = section_mappings.get(category.lower(), section_mappings['default'])
+        print(mappings)
+        print('909999900')
         # Adjust the section selector if necessary
         sections = self.page.locator('div.label_tr_skill, div.label_tr')
         section_count = sections.count()
@@ -207,6 +216,7 @@ class ReportAutomation:
                     break
 
             if section_key:
+   
                 section_data = report.get(section_key, {})
                 if isinstance(section_data, dict):
                     comment_text = section_data.get('Comment', "Sin comentario")
@@ -216,10 +226,14 @@ class ReportAutomation:
 
                 # Interact with the select element if applicable
                 if select_value:
+                    if section_key == 'Audio Listening Frequency' and select_value == 'Insufficient':
+                        select_value = 'Sufficient'
+                        print(f"Updated 'Audio Listening Frequency' rating to '{select_value}'")
+
+                    select_value = 'Very good' if select_value == 'Very Good' else select_value
                     select_locator = section.locator('xpath=following::select[contains(@class, "select_tr")][1]')
                     select_locator.select_option(label=select_value)
                     print(f"Selected '{select_value}' for section '{section_title}'")
-
                 # Fill in the comment if applicable
                 if comment_text:
                     textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr") or contains(@class, "textarea_div")][1]')

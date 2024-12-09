@@ -14,9 +14,6 @@ ALLOWED_EXTENSIONS = {'xlsx'}
 PROCESSED_STUDENTS_FILE = "processed_students.json"
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-# os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
-# os.environ["SERPER_API_KEY"] = "your-serper-api-key"
-# os.environ['CLAUDE_API_KEY'] = 'your-claude-api-key'
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -33,15 +30,13 @@ def upload_file():
             username = request.form.get('username')
             password = request.form.get('password')
 
-            # Read all sheets from the Excel file without specifying headers
             file_content = file.read()
             df_dict = pd.read_excel(io.BytesIO(file_content), sheet_name=None, header=None)  # Read without headers
 
-            # Define column names for each category
             category_column_names = {
                 'Tweens': [
                     'Centro', 'Nombre grupo', 'Curso', 'Profesora', 'Nombre alumno', 'Audio Listening Frequency',
-                    'Oral Test Score', 'Comentario oral test', 'Written Test Score', 'Comentario written test',
+                    'Oral Test Score', 'Comentario oral test', 'Written Test Score', 'Comentario written test', 'My Way',
                     'Behaviour: rating', 'Behaviour: Entra contento a clase', 'Behaviour: Actitud positiva',
                     'Behaviour: Entusiasmo', 'Behaviour: Toma iniciativa', 'Behaviour: Dato diferenciador',
                     'Behaviour: puntos a mejorar', 'Behaviour: puntos fuertes', 'Behaviour: Tiene amigos en clase',
@@ -181,8 +176,7 @@ def process_reports(df_dict, username, password, category_column_names):
 
                 # Generate and send report
                 print(student.category)
-                print('CATEGORYYYYYYY')
-                if str(student.category) == 'Tweens':
+                if 'tweens' in str(student.category.lower()):
                     report = generar_reporte_tweens(student)
                 else:
                     report = generar_reporte(student) 
@@ -203,11 +197,14 @@ def process_reports(df_dict, username, password, category_column_names):
 class StudentData:
     def __init__(self, row, category):
         self.term = 1
-        self.center = row.get('Centro', '')
+        self.center = row.get('Centro', '').split()[0]
         self.group_name = row.get('Nombre grupo', '')
         self.course = row.get('Curso', '')
         self.professor = row.get('Profesora', '')
         self.student_name = row.get('Nombre alumno', '')
+        if "1to1" in self.student_name:
+            self.student_name = self.student_name.split("1to1", 1)[0].strip()
+            print(f"Modified student_name: {self.student_name}")
         self.audio_listening_frequency = row.get('Audio Listening Frequency', '')
         self.oral_test_score = row.get('Oral Test Score', '')
         self.oral_test_comment = row.get('Comentario oral test', '')
@@ -217,6 +214,8 @@ class StudentData:
         self.global_score = ''
         self.homework_score = ''
         self.global_score_comment = ''
+
+        self.my_way = row.get('My Way', '')
 
 
         # Motivation & Participation Section (default category)

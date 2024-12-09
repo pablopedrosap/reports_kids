@@ -29,7 +29,7 @@ def generar_reporte(student):
     print(student.student_name)
 
     # Determinar si la categoría del estudiante incluye prueba escrita
-    courses_with_written_test = ['B&B', 'Tweens']
+    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens']
     include_written_test = student.category in courses_with_written_test
 
     dod = '''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
@@ -46,7 +46,8 @@ def generar_reporte(student):
 12. Para el informe final del año, incluye una evaluación general y recomendaciones de práctica para el verano.
 13. Para las clases de Babies, enfócate en las reacciones e indicadores de comprensión.
 14. Para las clases de T&T, aborda el comportamiento, hábitos de trabajo y rendimiento en todas las habilidades.
-15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes.'''
+15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
+16. Crucial que no te inventes ningún dato que no te he proporcionado.'''
 
     descripcion_tarea = f"""
 Escribe un informe detallado para el estudiante basado en sus datos de rendimiento, sin inventar datos.
@@ -106,7 +107,7 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 
     if include_written_test:
         
-        descripcion_tarea += f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}"
+        descripcion_tarea += f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica"
 
     descripcion_tarea += f"""- Entra contento a clase: {student.enters_happy}
 - Actitud positiva: {student.positive_attitude}
@@ -167,15 +168,17 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 
 
 
+
 class ReportModelTweens(BaseModel):
     Comportamiento: ReportSection
     Trabajo: ReportSection
     Rendimiento: ReportSection
+    My_Way: str
     Nota_de_prueba_oral: str  # Solo se necesita el comentario
     Nota_de_prueba_escrita: str  # Incluida para "Tweens"
-    Homework: str  # Añadido Homework sin calificación
+    Deberes: str  # Añadido Homework sin calificación
     Evaluación_general: str    # Solo se necesita el comentario
-    Global_Score: str  # Añadido Global Score sin calificación
+    Nota_Global: str  # Añadido Global Score sin calificación
 
 '''bb lo detecta como'''
 
@@ -200,7 +203,8 @@ def generar_reporte_tweens(student):
     12. Para el informe final del año, incluye una evaluación general y recomendaciones de práctica para el verano.
     13. Para las clases de Babies, enfócate en las reacciones e indicadores de comprensión.
     14. Para las clases de T&T, aborda el comportamiento, hábitos de trabajo y rendimiento en todas las habilidades.
-    15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes.'''
+    15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
+    16. Crucial que no te inventes ningún dato que no te he proporcionado'''
 
     # Construir la parte inicial del prompt con las calificaciones
     descripcion_tarea = f"""
@@ -229,6 +233,7 @@ Rendimiento rating: {student.performance_rating}
         "Rating": "Excellent/Very good/Good/Satisfactory/Poor",
         "Comment": "<Detailed comment>"
     },
+    "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way". >",
     "Nota_de_prueba_oral": "<Detailed comment>",
     "Nota_de_prueba_escrita": "<Detailed comment>",
     "Homework": "<Detailed comment>",
