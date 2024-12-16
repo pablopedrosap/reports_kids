@@ -6,6 +6,8 @@ import io
 from report_generator import generar_reporte, generar_reporte_tweens
 from report_automation import ReportAutomation
 import json
+import os
+import json
 
 app = Flask(__name__)
 
@@ -17,6 +19,50 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_all_reports_to_text(reports, output_file="Consolidated_Report.txt"):
+    """
+    Save all student reports to a single plain text file.
+    
+    :param reports: List of tuples (StudentData, Report as JSON or str)
+    :param output_file: Name of the output text file
+    """
+    output_dir = "reports"
+    os.makedirs(output_dir, exist_ok=True)  # Ensure the reports directory exists
+    output_path = os.path.join(output_dir, output_file)
+
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write("Consolidated Reports\n")
+        file.write("=" * 50 + "\n\n")
+
+        for student, report in reports:
+            file.write(f"Report for {student.student_name}\n")
+            file.write("-" * 50 + "\n")
+
+            # General Information
+            file.write(f"Teacher: {student.professor}\n")
+            file.write(f"Group Name: {student.group_name}\n")
+            file.write(f"Category: {student.category}\n")
+            file.write("\n")
+
+            # Add detailed report sections
+            file.write("Report Details:\n")
+            if isinstance(report, str):
+                file.write(f"{report}\n")
+            else:
+                for section, details in report.items():
+                    file.write(f"{section.replace('_', ' ').capitalize()}:\n")
+                    if isinstance(details, dict):
+                        for key, value in details.items():
+                            file.write(f"  {key.capitalize()}: {value}\n")
+                    else:
+                        file.write(f"  {details}\n")
+                    file.write("\n")
+
+            file.write("-" * 50 + "\n\n")
+
+    print(f"Consolidated report saved as: {output_file}")
+
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -112,6 +158,7 @@ def save_processed_students(processed_students):
 def process_reports(df_dict, username, password, category_column_names):
     processed_students = load_processed_students()
     automation = ReportAutomation(username, password)
+    all_reports = []  # To collect all reports
     try:
         automation.login()
         current_group = None
@@ -137,7 +184,8 @@ def process_reports(df_dict, username, password, category_column_names):
 
             # Set the DataFrame's column names to the header row and drop header rows
             df.columns = df.iloc[header_row_index]
-            df = df.iloc[header_row_index + 1:]
+            df = df.iloc[header_row_index :]
+            # print(df.head())
             df = df[df.iloc[:, 0] != 'Centro']
             df.reset_index(drop=True, inplace=True)
 
@@ -154,7 +202,11 @@ def process_reports(df_dict, username, password, category_column_names):
 
             # Process each row as student data
             for _, row in df.iterrows():
+                if pd.isnull(row['Centro']) or row['Centro'] == '' or 'norte' in row['Centro'].lower() or 'norte' in row['Centro'].lower():
+                    continue
+
                 student = StudentData(row, category)
+                student.center = student.center.split()[0]  
 
                 # Check if the student has already been processed
                 if student.student_name in processed_students:
@@ -165,7 +217,7 @@ def process_reports(df_dict, username, password, category_column_names):
                 if student.group_name != current_group:
                     current_group = student.group_name
                     automation.navigate_to_reports(student.center, student.course, student.group_name)
-
+                
                 scores = automation.extract_scores(student.student_name, student.term, student.category)
 
                 # Set the extracted scores in the student object
@@ -176,14 +228,14 @@ def process_reports(df_dict, username, password, category_column_names):
 
                 # Generate and send report
                 print(student.category)
-                if 'tweens' in str(student.category.lower()):
+                if 'tweens' in str(student.category.lower()) or 'teens' in str(student.category.lower()):
                     report = generar_reporte_tweens(student)
                 else:
                     report = generar_reporte(student) 
                 print("Generated Report:", report)
+                all_reports.append((student, report))
                 automation.enter_report(student.student_name, student.term, report, student.category)
 
-                # Add student to processed list
                 processed_students.add(student.student_name)
 
         # Save updated list of processed students at the end of processing
@@ -193,17 +245,21 @@ def process_reports(df_dict, username, password, category_column_names):
         print(f"An error occurred: {e}")
     finally:
         automation.close()
+    save_all_reports_to_text(all_reports)
 
 class StudentData:
     def __init__(self, row, category):
         self.term = 1
-        self.center = row.get('Centro', '').split()[0]
+        self.center = row.get('Centro', '')
         self.group_name = row.get('Nombre grupo', '')
         self.course = row.get('Curso', '')
         self.professor = row.get('Profesora', '')
         self.student_name = row.get('Nombre alumno', '')
         if "1to1" in self.student_name:
             self.student_name = self.student_name.split("1to1", 1)[0].strip()
+            print(f"Modified student_name: {self.student_name}")
+        if "1to2" in self.student_name:
+            self.student_name = self.student_name.split("1to2", 1)[0].strip()
             print(f"Modified student_name: {self.student_name}")
         self.audio_listening_frequency = row.get('Audio Listening Frequency', '')
         self.oral_test_score = row.get('Oral Test Score', '')

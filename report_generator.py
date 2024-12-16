@@ -27,27 +27,106 @@ llm4o_mini = ChatOpenAI(model="gpt-4o-mini")
 def generar_reporte(student):
     print(student)
     print(student.student_name)
+    for attr, value in vars(student).items():
+        setattr(student, attr, str(value) if value is not None else '')
+
 
     # Determinar si la categoría del estudiante incluye prueba escrita
-    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens']
+    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
     include_written_test = student.category in courses_with_written_test
 
-    dod = '''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
+    # Construir la sección de datos del estudiante
+    datos_estudiante = []
+
+    # Sólo añadimos líneas si el valor no es vacío
+    if student.student_name.strip():
+        datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
+    if student.oral_test_score.strip():
+        datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
+
+    if include_written_test and student.written_test_score != 0:
+        datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+
+    if student.enters_happy.strip():
+        datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
+    if student.positive_attitude.strip():
+        datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
+    if student.enthusiasm.strip():
+        datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
+    if student.initiative.strip():
+        datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
+    if student.differentiator.strip():
+        datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
+    if student.behavior_improvement_points.strip():
+        datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
+    if student.behavior_strong_points.strip():
+        datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
+    if student.has_friends_in_class.strip():
+        datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
+    if student.gets_distracted.strip():
+        datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
+    if student.collaborates_with_peers.strip():
+        datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
+    if student.respects_turns.strip():
+        datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
+    if student.cares_for_materials.strip():
+        datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
+    if student.misbehavior_action.strip():
+        datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
+    if student.participates.strip():
+        datos_estudiante.append(f"- Participa: {student.participates}")
+    if student.preferred_activities.strip():
+        datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
+    if student.good_pronunciation.strip():
+        datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
+    if student.efforts_to_communicate.strip():
+        datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
+    if student.confident_expression.strip():
+        datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
+    if student.asks_questions.strip():
+        datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
+    if student.helps_teacher.strip():
+        datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
+    if student.follows_instructions.strip():
+        datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
+    if student.understands.strip():
+        datos_estudiante.append(f"- Comprende: {student.understands}")
+    if student.uses_keywords.strip():
+        datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
+    if student.makes_complete_structures.strip():
+        datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
+    if student.example_sentences.strip():
+        datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
+    if student.learning_strong_points.strip():
+        datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
+    if student.learning_improvement_points.strip():
+        datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
+    if student.homework.strip():
+        datos_estudiante.append(f"- Deberes: {student.homework}")
+
+    # Unir todas las líneas filtradas
+
+
+    dod = f'''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
 2. Cada sección debe tener al menos 300 caracteres.
 3. Usa el nombre del estudiante al menos una vez en cada sección, no uses los apellidos.
 4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
-5. Las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas entre paréntesis, nada más entre paréntesis.).
+5. Las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
 8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
 9. Sé tacto al abordar problemas, siempre proponiendo soluciones.
-10. Asegúrate de que la evaluación (excelente, muy bien, bien, satisfactorio, deficiente) coincida con el contenido escrito. No hables de la nota concreta, solo justifícala.
+10. Asegúrate de que la evaluación coincida con el contenido escrito. No hables de la nota concreta, solo justifícala.
 11. Usa lenguaje positivo y propone soluciones al abordar problemas.
 12. Para el informe final del año, incluye una evaluación general y recomendaciones de práctica para el verano.
 13. Para las clases de Babies, enfócate en las reacciones e indicadores de comprensión.
 14. Para las clases de T&T, aborda el comportamiento, hábitos de trabajo y rendimiento en todas las habilidades.
 15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
-16. Crucial que no te inventes ningún dato que no te he proporcionado.'''
+16. Crucial que no te inventes ningún dato que no te he proporcionado. Como asumir el numero de alumnos o el género del profesor. Solo usa lo que sabes.
+17. Decir entrar al aula en vez de ‘’ingresar al aula’’, no decir "exitosamente", no hablar del alumno como un "recurso" o usar ninguna expresión latina, solo usar español de España.
+18. Solo una vez dar alguna pequeña oración de ánimo como: ‘’sigue así’’, ‘’bien hecho’’, ‘’well done!’’, ‘’awesome’’, ‘’excellent’’, ‘’way to go!’’.´
+{ "19. Si el curso es mousy o linda, no hablar de 'práctica gramatical avanzada' ya que son pequeños." if 'mousy' in student.category.lower() or 'linda' in student.category.lower() else "" }
+'''
 
     descripcion_tarea = f"""
 Escribe un informe detallado para el estudiante basado en sus datos de rendimiento, sin inventar datos.
@@ -72,7 +151,10 @@ Comportamiento for rating: {student.behavior_rating}
         "Rating": "Excellent/Very good/Good/Satisfactory",
         "Comment": "<Detailed comment>"
     }},
-    "Nota_de_prueba_oral": "<Detailed comment>",
+    "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
+Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
+Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
+Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya sea con una sola palabra o con la estructura completa, sin necesidad de que se le ayude.>",
     {"\"Nota_de_prueba_escrita\": \"<Detailed comment>\"," if include_written_test else ""}
     "Evaluación_general": "<Detailed comment>"
 }}
@@ -101,46 +183,12 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 **Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del ejemplo anterior pero variando la estructura para evitar repeticiones.**
 
 **Datos del estudiante: ESENCIAL QUE SOLO USES DATOS DE AQUÍ Y NO TE INVENTES NINGÚN DATO NO PRESENTE**
-- Nombre: {student.student_name.split()[0]}
-- Puntuación de prueba oral: {student.oral_test_score}
+
 """
-
-    if include_written_test:
-        
-        descripcion_tarea += f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica"
-
-    descripcion_tarea += f"""- Entra contento a clase: {student.enters_happy}
-- Actitud positiva: {student.positive_attitude}
-- Entusiasmo: {student.enthusiasm}
-- Toma iniciativa: {student.initiative}
-- Dato diferenciador: {student.differentiator}
-- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}
-- Puntos fuertes en comportamiento: {student.behavior_strong_points}
-- Tiene amigos en clase: {student.has_friends_in_class}
-- Se distrae: {student.gets_distracted}
-- Colabora con compañeros: {student.collaborates_with_peers}
-- Respeta turnos de palabra: {student.respects_turns}
-- Cuida el material: {student.cares_for_materials}
-- Acciones en caso de mal comportamiento: {student.misbehavior_action}
-- Participa: {student.participates}
-- Actividades preferidas: {student.preferred_activities}
-- Buena pronunciación: {student.good_pronunciation}
-- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}
-- Se expresa con seguridad: {student.confident_expression}
-- Pregunta dudas: {student.asks_questions}
-- Ayuda a la profe: {student.helps_teacher}
-- Sigue instrucciones: {student.follows_instructions}
-- Comprende: {student.understands}
-- Usa palabras clave: {student.uses_keywords}
-- Hace estructuras completas: {student.makes_complete_structures}
-- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}
-- Puntos fuertes de rendimiento: {student.learning_strong_points}
-- Puntos a mejorar en rendimiento: {student.learning_improvement_points}
-
-- Deberes: {student.homework}
-
+    
+    descripcion_tarea += f"""{datos_estudiante}
 **Importante**:
-- REDACTA LO MÁS HUMANO POSIBLE COMO UN BUEN PROFESOR
+- REDACTA LO MÁS HUMANO POSIBLE COMO UN BUEN PROFESOR/PROFESORA
 - Asegúrate de que el informe final esté en formato JSON válido.    
 - Utiliza comillas dobles para las claves y los valores.
 - Si necesitas incluir comillas dentro de un valor, escápalas usando \\\".
@@ -154,6 +202,8 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
+    with open('names.txt', 'a') as file:
+        file.write(f'\n{student.student_name}')
 
     try:
         # Convertir la respuesta a formato JSON si es válida
@@ -185,26 +235,101 @@ class ReportModelTweens(BaseModel):
 def generar_reporte_tweens(student):
     print(student)
     print(student.student_name)
+    for attr, value in vars(student).items():
+        setattr(student, attr, str(value) if value is not None else '')
+
+    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
+    include_written_test = student.category in courses_with_written_test
 
     # Verificar si la categoría del estudiante es "Tweens"
-    is_tweens = student.category.lower() == 'tweens'
+    datos_estudiante = []
 
-    dod = '''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
-    2. Cada sección debe tener al menos 300 caracteres.
-    3. Usa el nombre del estudiante al menos una vez en cada sección, no uses los apellidos.
-    4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
-    5. Las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas entre paréntesis, nada más entre paréntesis.).
-    6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
-    7. Escribe en tercera persona, evitando declaraciones en primera persona.
-    8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
-    9. Sé tacto al abordar problemas, siempre proponiendo soluciones.
-    10. Asegúrate de que la evaluación (excellent, very good, good, satisfactory, poor) coincida con el contenido escrito. No hables de la nota concreta, solo justifícala.
-    11. Usa lenguaje positivo y propone soluciones al abordar problemas.
-    12. Para el informe final del año, incluye una evaluación general y recomendaciones de práctica para el verano.
-    13. Para las clases de Babies, enfócate en las reacciones e indicadores de comprensión.
-    14. Para las clases de T&T, aborda el comportamiento, hábitos de trabajo y rendimiento en todas las habilidades.
-    15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
-    16. Crucial que no te inventes ningún dato que no te he proporcionado'''
+    # Sólo añadimos líneas si el valor no es vacío
+    if student.student_name.strip():
+        datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
+    if student.oral_test_score != '':
+        datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
+
+    if student.written_test_score != '':
+        datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+
+    if student.enters_happy.strip():
+        datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
+    if student.positive_attitude.strip():
+        datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
+    if student.enthusiasm.strip():
+        datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
+    if student.initiative.strip():
+        datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
+    if student.differentiator.strip():
+        datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
+    if student.behavior_improvement_points.strip():
+        datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
+    if student.behavior_strong_points.strip():
+        datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
+    if student.has_friends_in_class.strip():
+        datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
+    if student.gets_distracted.strip():
+        datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
+    if student.collaborates_with_peers.strip():
+        datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
+    if student.respects_turns.strip():
+        datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
+    if student.cares_for_materials.strip():
+        datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
+    if student.misbehavior_action.strip():
+        datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
+    if student.participates.strip():
+        datos_estudiante.append(f"- Participa: {student.participates}")
+    if student.preferred_activities.strip():
+        datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
+    if student.good_pronunciation.strip():
+        datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
+    if student.efforts_to_communicate.strip():
+        datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
+    if student.confident_expression.strip():
+        datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
+    if student.asks_questions.strip():
+        datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
+    if student.helps_teacher.strip():
+        datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
+    if student.follows_instructions.strip():
+        datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
+    if student.understands.strip():
+        datos_estudiante.append(f"- Comprende: {student.understands}")
+    if student.uses_keywords.strip():
+        datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
+    if student.makes_complete_structures.strip():
+        datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
+    if student.example_sentences.strip():
+        datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
+    if student.learning_strong_points.strip():
+        datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
+    if student.learning_improvement_points.strip():
+        datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
+    if student.homework.strip():
+        datos_estudiante.append(f"- Deberes: {student.homework}")
+
+    # Unir todas las líneas filtradas
+
+    dod = f'''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
+2. Cada sección debe tener al menos 300 caracteres.
+3. Usa el nombre del estudiante al menos una vez en cada sección, no uses los apellidos.
+4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
+6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
+7. Escribe en tercera persona, evitando declaraciones en primera persona.
+8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
+9. Sé tacto al abordar problemas, siempre proponiendo soluciones.
+10. Asegúrate de que la evaluación coincida con el contenido escrito. No hables de la nota concreta, solo justifícala.
+11. Usa lenguaje positivo y propone soluciones al abordar problemas.
+12. Para el informe final del año, incluye una evaluación general y recomendaciones de práctica para el verano.
+13. Para las clases de Babies, enfócate en las reacciones e indicadores de comprensión.
+14. Para las clases de T&T, aborda el comportamiento, hábitos de trabajo y rendimiento en todas las habilidades.
+15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
+16. Crucial que no te inventes ningún dato que no te he proporcionado. Como asumir el numero de alumnos o el género del profesor. Solo usa lo que sabes.
+17. Decir entrar al aula en vez de ‘’ingresar al aula’’, no decir "exitosamente", no hablar del alumno como un "recurso" o usar ninguna expresión latina, solo usar español de España.
+18. Dar alguna pequeña oración de ánimo como: ‘’sigue así’’, ‘’bien hecho’’, ‘’well done!’’, ‘’awesome’’, ‘’excellent’’, ‘’way to go!’’.´
+'''
 
     # Construir la parte inicial del prompt con las calificaciones
     descripcion_tarea = f"""
@@ -233,8 +358,11 @@ Rendimiento rating: {student.performance_rating}
         "Rating": "Excellent/Very good/Good/Satisfactory/Poor",
         "Comment": "<Detailed comment>"
     },
-    "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way". >",
-    "Nota_de_prueba_oral": "<Detailed comment>",
+    "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way".>",
+     "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
+Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
+Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
+Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya sea con una sola palabra o con la estructura completa, sin necesidad de que se le ayude.>",
     "Nota_de_prueba_escrita": "<Detailed comment>",
     "Homework": "<Detailed comment>",
     "Evaluación_general": "<Detailed comment>",
@@ -259,7 +387,7 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
     },
     "Rendimiento": {
         "Rating": "Very good",
-        "Comment": "Carlos comprende bien los conceptos enseñados y es capaz de usar palabras clave y estructuras completas. Ha utilizado frases como \\\"I went to the park yesterday\\\" (Fui al parque ayer). Su progreso es notable."
+        "Comment": "Carlos comprende bien los conceptos enseñados y es capaz de usar palabras clave y estructuras completas. Su progreso es notable."
     },
     "Nota_de_prueba_oral": "Carlos obtuvo una alta calificación en la prueba oral, demostrando fluidez y buena pronunciación. Su confianza al hablar en inglés es evidente.",
     "Nota_de_prueba_escrita": "En la prueba escrita, Carlos mostró un sólido entendimiento de la gramática y el vocabulario. Continuar practicando la escritura le ayudará a consolidar sus habilidades.",
@@ -273,48 +401,13 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
     descripcion_tarea += sample_report
 
     # Construir la sección de datos del estudiante, incluyendo Homework y Global Score
-    descripcion_tarea += f"""
-**Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del ejemplo anterior pero variando la estructura para evitar repeticiones.**
-
-**Datos del estudiante: ESENCIAL QUE SOLO USES DATOS DE AQUÍ Y NO TE INVENTES NINGÚN DATO NO PRESENTE**
-- Nombre: {student.student_name.split()[0]}
-- Homework: {student.homework_comment}
-- Entra contento a clase: {student.enters_happy}
-- Actitud positiva: {student.positive_attitude}
-- Entusiasmo: {student.enthusiasm}
-- Toma iniciativa: {student.initiative}
-- Dato diferenciador: {student.differentiator}
-- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}
-- Puntos fuertes en comportamiento: {student.behavior_strong_points}
-- Tiene amigos en clase: {student.has_friends_in_class}
-- Se distrae: {student.gets_distracted}
-- Colabora con compañeros: {student.collaborates_with_peers}
-- Respeta turnos de palabra: {student.respects_turns}
-- Cuida el material: {student.cares_for_materials}
-- Acciones en caso de mal comportamiento: {student.misbehavior_action}
-
-- Participa: {student.work_participates}
-- Actividades preferidas: {student.work_preferred_activities}
-- Buena pronunciación: {student.work_good_pronunciation}
-- Se esfuerza por comunicarse en inglés: {student.work_efforts_to_communicate}
-- Se expresa con seguridad: {student.work_confident_expression}
-- Pregunta dudas: {student.work_asks_questions}
-- Ayuda a la profe: {student.work_helps_teacher}
-- Sigue instrucciones: {student.work_follows_instructions}
-
-- Comprende: {student.performance_understands}
-- Usa palabras clave: {student.performance_uses_keywords}
-- Hace estructuras completas: {student.performance_makes_complete_structures}
-- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.performance_example_sentences}
-- Puede deletrear correctamente: {student.performance_spells_correctly}
-- Puntos fuertes de rendimiento: {student.performance_strong_points}
-- Puntos a mejorar en rendimiento: {student.performance_improvement_points}
-
+    descripcion_tarea += f"""{datos_estudiante}
 **Importante**:
-- REDACTA LO MÁS HUMANO POSIBLE COMO UN BUEN PROFESOR
-- Asegúrate de que el informe final esté en formato JSON válido.
+- REDACTA LO MÁS HUMANO POSIBLE COMO UN BUEN PROFESOR/PROFESORA
+- Asegúrate de que el informe final esté en formato JSON válido.    
 - Utiliza comillas dobles para las claves y los valores.
 - Si necesitas incluir comillas dentro de un valor, escápalas usando \\\".
+
 """
 
     # Generar el informe utilizando el modelo
@@ -326,6 +419,9 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
+    with open('names.txt', 'a') as file:
+        file.write(f'\n{student.student_name}')
+
 
     try:
         # Convertir la respuesta a formato JSON si es válida

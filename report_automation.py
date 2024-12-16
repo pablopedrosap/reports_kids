@@ -83,6 +83,7 @@ class ReportAutomation:
 
         student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
+        term_column = 1
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
         edit_button.wait_for(timeout=10000)
         edit_button.click()
@@ -150,6 +151,7 @@ class ReportAutomation:
         student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         print(student_row)
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
+        term_column = 1
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
         edit_button.wait_for(timeout=10000)
         edit_button.click()
