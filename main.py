@@ -1,5 +1,6 @@
+from dotenv import load_dotenv
 import os
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 import pandas as pd
 import io
@@ -7,144 +8,182 @@ from report_generator import generar_reporte, generar_reporte_tweens
 from report_automation import ReportAutomation
 import json
 import os
-import json
+from pydantic import BaseModel
+from openai import OpenAI
+from typing import Optional
+import numpy as np
+
+load_dotenv()  # This loads the .env file
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Necessary for flashing messages
 
 URL = "https://myclassroom.kidsandus.es"
 ALLOWED_EXTENSIONS = {'xlsx'}
-PROCESSED_STUDENTS_FILE = "processed_students.json"
+PROCESSED_STUDENTS_FILE = "names.txt"
 
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+# OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_KEY='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'
+if not OPENAI_API_KEY:
+    raise EnvironmentError("OPENAI_API_KEY not set in environment variables.")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def save_all_reports_to_text(reports, output_file="Consolidated_Report.txt"):
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+import os
+
+def save_all_reports_to_pdf(reports, output_file="Consolidated_Report.pdf"):
     """
-    Save all student reports to a single plain text file.
+    Save all student reports to a professional PDF format.
     
     :param reports: List of tuples (StudentData, Report as JSON or str)
-    :param output_file: Name of the output text file
+    :param output_file: Name of the output PDF file
     """
     output_dir = "reports"
     os.makedirs(output_dir, exist_ok=True)  # Ensure the reports directory exists
     output_path = os.path.join(output_dir, output_file)
+    
+    # Initialize PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    elements = []  # To collect PDF elements
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = styles['Title']
+    heading_style = ParagraphStyle(name="Heading", fontSize=12, spaceAfter=10, bold=True)
+    normal_style = styles['BodyText']
+    
+    # Add Title
+    elements.append(Paragraph("Consolidated Student Reports", title_style))
+    elements.append(Spacer(1, 12))
+    
+    for student, report in reports:
+        # Add Student Header
+        elements.append(Paragraph(f"Report for {student.data.get('student_name', 'N/A')}", heading_style))
+        
+        # General Information Table
+        general_info = [
+            ["Teacher", student.data.get('Profesora', 'N/A')],
+            ["Group Name", student.data.get('Nombre grupo', 'N/A')],
+            ["Category", student.category]
+        ]
+        table = Table(general_info, colWidths=[150, 300])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 12))
+        
+        # Report Details Section
+        elements.append(Paragraph("Report Details:", heading_style))
+        if isinstance(report, str):
+            elements.append(Paragraph(report, normal_style))
+        else:
+            for section, details in report.items():
+                elements.append(Paragraph(f"{section.replace('_', ' ').capitalize()}:", heading_style))
+                if isinstance(details, dict):
+                    for key, value in details.items():
+                        elements.append(Paragraph(f"{key.capitalize()}: {value}", normal_style))
+                else:
+                    elements.append(Paragraph(str(details), normal_style))
+                elements.append(Spacer(1, 6))
+        
+        # Add a spacer between reports
+        elements.append(Spacer(1, 20))
+        elements.append(Paragraph("<hr width='100%'/>", normal_style))  # Horizontal line
 
-    with open(output_path, 'w', encoding='utf-8') as file:
-        file.write("Consolidated Reports\n")
-        file.write("=" * 50 + "\n\n")
-
-        for student, report in reports:
-            file.write(f"Report for {student.student_name}\n")
-            file.write("-" * 50 + "\n")
-
-            # General Information
-            file.write(f"Teacher: {student.professor}\n")
-            file.write(f"Group Name: {student.group_name}\n")
-            file.write(f"Category: {student.category}\n")
-            file.write("\n")
-
-            # Add detailed report sections
-            file.write("Report Details:\n")
-            if isinstance(report, str):
-                file.write(f"{report}\n")
-            else:
-                for section, details in report.items():
-                    file.write(f"{section.replace('_', ' ').capitalize()}:\n")
-                    if isinstance(details, dict):
-                        for key, value in details.items():
-                            file.write(f"  {key.capitalize()}: {value}\n")
-                    else:
-                        file.write(f"  {details}\n")
-                    file.write("\n")
-
-            file.write("-" * 50 + "\n\n")
-
-    print(f"Consolidated report saved as: {output_file}")
+    # Build the 
+    doc.build(elements)
+    print(f"Consolidated report saved as: {output_path}")
 
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
+        # Check if the POST request has the file part
         if 'file' not in request.files:
-            return "No file part"
-        file = request.files['file']
-        if file.filename == '':
-            return "No selected file"
-        if file and allowed_file(file.filename):
-            username = request.form.get('username')
-            password = request.form.get('password')
+            flash("No file part in the request.")
+            return redirect(request.url)
+        
+        files = request.files.getlist('file')  # Retrieve all files with the name 'file'
+        if not files or len(files) == 0:
+            flash("No files selected for uploading.")
+            return redirect(request.url)
+        
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-            file_content = file.read()
-            df_dict = pd.read_excel(io.BytesIO(file_content), sheet_name=None, header=None)  # Read without headers
+        if not username or not password:
+            flash("Username and password are required.")
+            return redirect(request.url)
 
-            category_column_names = {
-                'Tweens': [
-                    'Centro', 'Nombre grupo', 'Curso', 'Profesora', 'Nombre alumno', 'Audio Listening Frequency',
-                    'Oral Test Score', 'Comentario oral test', 'Written Test Score', 'Comentario written test', 'My Way',
-                    'Behaviour: rating', 'Behaviour: Entra contento a clase', 'Behaviour: Actitud positiva',
-                    'Behaviour: Entusiasmo', 'Behaviour: Toma iniciativa', 'Behaviour: Dato diferenciador',
-                    'Behaviour: puntos a mejorar', 'Behaviour: puntos fuertes', 'Behaviour: Tiene amigos en clase',
-                    'Behaviour: Se distrae', 'Behaviour: Colabora con compañeros', 'Behaviour: Respeta turnos palabra',
-                    'Behaviour: Cuida material', 'Behaviour: qué se ha hecho si tiene mal comportamiento',
-                    'Behaviour: puntos a mejorar', 'Behaviour: puntos fuertes', 'Work: rating', 'Work: Participa',
-                    'Work: Actividades preferidas', 'Work: Buena pronunciación',
-                    'Work: Se esfuerza por comunicarse en inglés', 'Work: Se expresa con seguridad', 'Work: Pregunta dudas',
-                    'Work: Ayuda a la profe', 'Work: Sigue instrucciones', 'Performance: rating', 'Perfomance: Comprende',
-                    'Perfomance: Usa palabaras clave', 'Perfomance: Hace estructuras completas',
-                    'Perfomance: Ejemplo de oraciones que hace', 'Perfomance: puede deletrear correctamente',
-                    'Perfomance: puntos fuertes', 'Perfomance:  puntos a mejorar', 'Homework', 'Comentario Homework'
-                ],
-                'B&B': [
-                    'Centro', 'Nombre grupo', 'Curso', 'Profesora', 'Nombre alumno', 'Oral Test Score',
-                    'Comentario oral test', 'Written Test Score', 'Comentario written test', 'Motivation & Participation: rating',
-                    'Motivation & Participation: Participa', 'Motivation & Participation: Entra contento a clase',
-                    'Motivation & Participation: Actitud positiva', 'Motivation & Participation: Entusiasmo',
-                    'Motivation & Participation: Toma iniciativa', 'Motivation & Participation: canta las canciones',
-                    'Motivation & Participation: Dato diferenciador', 'Motivation & Participation: puntos a mejorar',
-                    'Motivation & Participation: puntos fuertes', 'Motivation & Participation: Actividades preferidas',
-                    'Learning: rating', 'Learning: Comprende ', 'Learning: Usa palabaras clave',
-                    'Learning: Hace estructuras completas', 'Learning: Ejemplo de oraciones que hace',
-                    'Learning: Buena pronunciación', 'Learning: Se esfuerza por comunicarse en inglés',
-                    'Learning: Se expresa con seguridad', 'Learning: puede deletrear correctamente',
-                    'Learning: puntos fuertes', 'Learning: puntos a mejorar', 'Learning: Pregunta dudas',
-                    'Behaviour: rating', 'Behaviour: Ayuda a la profe', 'Behaviour: Tiene amigos en clase',
-                    'Behaviour: Se distrae', 'Behaviour: Colabora con compañeros', 'Behaviour: Sigue instrucciones',
-                    'Behaviour: Respeta turnos palabra', 'Behaviour: Cuida material',
-                    'Behaviour: qué se ha hecho si tiene mal comportamiento', 'Behaviour: puntos a mejorar',
-                    'Behaviour: puntos fuertes'
-                ],
-                'default': [
-                    "Centro", "Nombre grupo", "Curso", "Profesora", "Nombre alumno",
-                    "Audio Listening Frequency", "Oral Test Score", "Comentario oral test", "Written Test Score",
-                    "Comentario written test", "Motivation & Participation: rating", "Motivation & Participation: Participa",
-                    "Motivation & Participation: Entra contento a clase", "Motivation & Participation: Actitud positiva",
-                    "Motivation & Participation: Entusiasmo", "Motivation & Participation: Toma iniciativa",
-                    "Motivation & Participation: baila las canciones", "Motivation & Participation: puntos a mejorar",
-                    "Motivation & Participation: puntos fuertes", "Motivation & Participation: Actividades preferidas",
-                    "Learning: rating", "Learning: Comprende", "Learning: Usa palabras clave",
-                    "Learning: Hace estructuras completas", "Learning: Ejemplo de oraciones que hace",
-                    "Learning: Buena pronunciación", "Learning: Se esfuerza por comunicarse en inglés",
-                    "Learning: Se expresa con seguridad", "Learning: puntos fuertes", "Learning: puntos a mejorar",
-                    "Learning: Pregunta dudas", "Behaviour: rating", "Behaviour: Ayuda a la profe",
-                    "Behaviour: Tiene amigos en clase", "Behaviour: Se distrae (0 no se distrae y 10 se distrae mucho)",
-                    "Behaviour: Colabora con compañeros", "Behaviour: Sigue instrucciones", "Behaviour: Respeta turnos palabra",
-                    "Behaviour: Cuida material", "Behaviour: qué se ha hecho si tiene mal comportamiento",
-                    "Behaviour: puntos a mejorar", "Behaviour: puntos fuertes"
-                ]
-            }
+        all_reports = []  # Initialize a list to collect reports from all files
+        errors = []  # To collect any errors during processing
 
-            # Process reports for each sheet
-            process_reports(df_dict, username, password, category_column_names)
+        for file in files:
+            if file.filename == '':
+                errors.append("One of the files has no selected filename.")
+                continue
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                try:
+                    file_content = file.read()
+                    df_dict = pd.read_excel(io.BytesIO(file_content), sheet_name=None, header=None)  # Read without headers
+                    print(f"Processing file: {filename}")
+                    reports = process_reports(df_dict, username, password)
+                    all_reports.extend(reports)
+                    flash(f"Successfully processed file: {filename}")
+                except Exception as e:
+                    error_message = f"Error processing file {filename}: {str(e)}"
+                    print(error_message)
+                    errors.append(error_message)
+            else:
+                errors.append(f"File {file.filename} has an invalid extension.")
+        
+        if all_reports:
+            try:
+                save_all_reports_to_pdf(all_reports)
+                flash("All reports generated and consolidated successfully.")
+            except Exception as e:
+                error_message = f"Error saving consolidated reports: {str(e)}"
+                print(error_message)
+                errors.append(error_message)
+        
+        if errors:
+            for error in errors:
+                flash(error)
+            return redirect(request.url)
+        
+        return "Reports generated and uploaded successfully."
+    
+    return render_template('upload.html')  # Ensure your upload.html supports multiple file uploads
 
-            return "Reports generated and uploaded successfully."
-    return render_template('upload.html')
+def load_column_mapping(filepath="column_mapping.json"):
+    """
+    Load column mapping from a JSON configuration file.
+    
+    :param filepath: Path to the JSON file containing column mappings
+    :return: Dictionary containing column mappings
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Column mapping file not found: {filepath}")
+    with open(filepath, 'r', encoding='utf-8') as file:
+        return json.load(file)
 
 def load_processed_students():
     """Load processed student names from a text file."""
-    if os.path.exists('names.txt'):
-        with open('names.txt', 'r') as file:
+    if os.path.exists(PROCESSED_STUDENTS_FILE):
+        with open(PROCESSED_STUDENTS_FILE, 'r') as file:
             # Read each line, strip any whitespace, and add to the set
             return set(line.strip() for line in file)
     return set()
@@ -155,7 +194,48 @@ def save_processed_students(processed_students):
         for student_name in processed_students:
             file.write(f"{student_name}\n")
 
-def process_reports(df_dict, username, password, category_column_names):
+def map_columns(df, column_mapping):
+    """
+    Map the DataFrame's columns to standardized keys based on the column_mapping.
+
+    :param df: pandas DataFrame with the original columns
+    :param column_mapping: dict mapping standardized keys to possible column names
+    :return: dict mapping standardized keys to actual DataFrame column names
+    """
+    mapping = {}
+    for key, possible_columns in column_mapping.items():
+        for col in df.columns:
+            if str(col).strip().lower() in [pc.lower() for pc in possible_columns]:
+                mapping[key] = col
+                break
+    return mapping
+
+def sanitize_student_data(student_dict):
+    """
+    Sanitize student data by stripping whitespace and handling data types.
+
+    :param student_dict: Dictionary containing student data
+    :return: Sanitized dictionary
+    """
+    sanitized_data = {}
+    for key, value in student_dict.items():
+        if isinstance(value, float) and value.is_integer():
+            sanitized_data[key] = int(value)
+        elif isinstance(value, str):
+            sanitized_data[key] = value.strip()
+        else:
+            sanitized_data[key] = value
+    return sanitized_data
+
+def process_reports(df_dict, username, password):
+    """
+    Process reports from the given dictionary of DataFrames.
+
+    :param df_dict: Dictionary where keys are sheet names (categories) and values are DataFrames
+    :param username: Username for authentication
+    :param password: Password for authentication
+    :return: List of tuples containing StudentData and generated reports
+    """
     processed_students = load_processed_students()
     automation = ReportAutomation(username, password)
     all_reports = []  # To collect all reports
@@ -166,184 +246,112 @@ def process_reports(df_dict, username, password, category_column_names):
         for category, df in df_dict.items():
             print(f"Processing category: {category}")
 
-            # Get the column names for this category
-            if category in category_column_names:
-                column_names = category_column_names[category]
-            else:
-                column_names = category_column_names['default']
-
             # Drop completely empty rows
+            df.replace('', np.nan, inplace=True)
+
+            # Now drop rows where all elements are NaN
             df = df.dropna(how='all')
+            invalid_rows = ['ANIMAL PLANET 1', 'FAIRY TAIL 1']  # Add any other invalid titles here
+            df = df[~df.iloc[:, 0].astype(str).isin(invalid_rows)]
 
             # Find the header row index where 'Centro' appears in the first column
-            header_row_index = df[df.iloc[:, 0] == 'Centro'].index
+            header_row_index = df[df.iloc[:, 0].astype(str).str.contains('Centro', case=False, na=False)].index
             if len(header_row_index) == 0:
                 print(f"Header 'Centro' not found in sheet {category}")
                 continue
             header_row_index = header_row_index[0]
 
-            # Set the DataFrame's column names to the header row and drop header rows
+            # Set the DataFrame's column names to the header row and drop header rows above
             df.columns = df.iloc[header_row_index]
-            df = df.iloc[header_row_index :]
-            # print(df.head())
-            df = df[df.iloc[:, 0] != 'Centro']
+            df = df.iloc[header_row_index + 1:]
+            df = df[df.iloc[:, 0].astype(str).str.lower() != 'centro']
             df.reset_index(drop=True, inplace=True)
 
-            # Ensure `column_names` matches the actual number of columns in `df`
-            actual_columns = len(df.columns)
-            if actual_columns > len(column_names):
-                # Add placeholders for extra columns
-                extended_column_names = column_names + [f"Extra_{i}" for i in range(1, actual_columns - len(column_names) + 1)]
-            else:
-                extended_column_names = column_names[:actual_columns]
-
-            # Assign the adjusted column names to `df`
-            df.columns = extended_column_names
+            # Log unmapped columns if necessary (optional)
+            # print(f"Columns in {category}: {df.columns.tolist()}")
 
             # Process each row as student data
             for _, row in df.iterrows():
-                if pd.isnull(row['Centro']) or row['Centro'] == '' or 'norte' in row['Centro'].lower() or 'norte' in row['Centro'].lower():
+                student_dict = row.to_dict()
+                student_dict = sanitize_student_data(student_dict)
+                # Apply necessary filters
+                center = student_dict.get('Centro', '')
+                if pd.isna(center):
                     continue
 
-                student = StudentData(row, category)
-                student.center = student.center.split()[0]  
-
-                # Check if the student has already been processed
-                if student.student_name in processed_students:
-                    print(f"Skipping already processed student: {student.student_name}")
+                course_field = student_dict.get('Curso', '')
+                if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
+                    print('Skipping invalid course')
                     continue
+
+                student_name = student_dict.get('Nombre alumno', '').strip()  # Extract only the first name
+                
+
+                if not student_name:
+                    print("Skipping student with no name.")
+                    continue
+
+                if student_name in processed_students:
+                    print(f"Skipping already processed student: {student_name}")
+                    continue
+          
 
                 # Navigate if changing groups
-                if student.group_name != current_group:
-                    current_group = student.group_name
-                    automation.navigate_to_reports(student.center, student.course, student.group_name)
-                
-                scores = automation.extract_scores(student.student_name, student.term, student.category)
+                group_name = student_dict.get('Nombre grupo', '')
+                if group_name != current_group:
+                    current_group = group_name
+                #     automation.navigate_to_reports(center.split()[0], student_dict.get('Curso', ''), group_name)
 
-                # Set the extracted scores in the student object
-                student.oral_test_score = scores.get('oral_test_score')
-                student.written_test_score = scores.get('written_test_score')
-                student.homework_score = scores.get('homework_score')
-                print(f"Assigned scores for {student.student_name}: {vars(student)}")
+                # # Extract scores
+                # scores = automation.extract_scores(student_name, student_dict.get('term', 1), category)
+
+                # # Update student_dict with extracted scores
+                # student_dict['oral_test_score'] = scores.get('oral_test_score', '')
+                # student_dict['written_test_score'] = scores.get('written_test_score', '')
+                # student_dict['homework_score'] = scores.get('homework_score', '')
+
+                # print(f"Assigned scores for {student_name}: {student_dict}")
+
+                # Create a StudentData instance with the sanitized dictionary
+                
+                student = StudentData(student_dict, category)
 
                 # Generate and send report
-                print(student.category)
-                if 'tweens' in str(student.category.lower()) or 'teens' in str(student.category.lower()):
+                if 'tweens' in category.lower() or 'teens' in category.lower():
                     report = generar_reporte_tweens(student)
                 else:
-                    report = generar_reporte(student) 
+                    report = generar_reporte(student)
                 print("Generated Report:", report)
                 all_reports.append((student, report))
-                automation.enter_report(student.student_name, student.term, report, student.category)
+                # automation.enter_report(student_name, student_dict.get('term', 1), report, category)
 
-                processed_students.add(student.student_name)
+                # Mark as processed
+                processed_students.add(student_name)
 
         # Save updated list of processed students at the end of processing
         save_processed_students(processed_students)
 
     except Exception as e:
         print(f"An error occurred: {e}")
+        raise e  # Re-raise the exception to handle it in the calling function
     finally:
         automation.close()
-    save_all_reports_to_text(all_reports)
+    
+    return all_reports  # Return the collected reports
 
 class StudentData:
-    def __init__(self, row, category):
-        self.term = 1
-        self.center = row.get('Centro', '')
-        self.group_name = row.get('Nombre grupo', '')
-        self.course = row.get('Curso', '')
-        self.professor = row.get('Profesora', '')
-        self.student_name = row.get('Nombre alumno', '')
-        if "1to1" in self.student_name:
-            self.student_name = self.student_name.split("1to1", 1)[0].strip()
-            print(f"Modified student_name: {self.student_name}")
-        if "1to2" in self.student_name:
-            self.student_name = self.student_name.split("1to2", 1)[0].strip()
-            print(f"Modified student_name: {self.student_name}")
-        self.audio_listening_frequency = row.get('Audio Listening Frequency', '')
-        self.oral_test_score = row.get('Oral Test Score', '')
-        self.oral_test_comment = row.get('Comentario oral test', '')
-        self.written_test_score = row.get('Written Test Score', '')
-        self.written_test_comment = row.get('Comentario written test', '')
-
-        self.global_score = ''
-        self.homework_score = ''
-        self.global_score_comment = ''
-
-        self.my_way = row.get('My Way', '')
-
-
-        # Motivation & Participation Section (default category)
-        self.motivation_rating = row.get('Motivation & Participation: rating', '')
-        self.participates = row.get('Motivation & Participation: Participa', '')
-        self.enters_happy = row.get('Motivation & Participation: Entra contento a clase', '')
-        self.positive_attitude = row.get('Motivation & Participation: Actitud positiva', '')
-        self.enthusiasm = row.get('Motivation & Participation: Entusiasmo', '')
-        self.initiative = row.get('Motivation & Participation: Toma iniciativa', '')
-        self.differentiator = row.get('Motivation & Participation: Dato diferenciador', '')
-        self.motivation_improvement_points = row.get('Motivation & Participation: puntos a mejorar', '')
-        self.motivation_strong_points = row.get('Motivation & Participation: puntos fuertes', '')
-        self.preferred_activities = row.get('Motivation & Participation: Actividades preferidas', '')
-
-        # Additional fields for 'B&B' category
-        self.sings_songs = row.get('Motivation & Participation: canta las canciones', '')
-        self.dances_songs = row.get('Motivation & Participation: baila las canciones', '')
-
-        # Learning Section
-        self.learning_rating = row.get('Learning: rating', '')
-        self.understands = row.get('Learning: Comprende', '')
-        self.uses_keywords = row.get('Learning: Usa palabras clave', '') or row.get('Learning: Usa palabaras clave', '')
-        self.makes_complete_structures = row.get('Learning: Hace estructuras completas', '')
-        self.example_sentences = row.get('Learning: Ejemplo de oraciones que hace', '')
-        self.good_pronunciation = row.get('Learning: Buena pronunciación', '')
-        self.efforts_to_communicate = row.get('Learning: Se esfuerza por comunicarse en inglés', '')
-        self.confident_expression = row.get('Learning: Se expresa con seguridad', '')
-        self.spells_correctly = row.get('Learning: puede deletrear correctamente', '')
-        self.learning_strong_points = row.get('Learning: puntos fuertes', '')
-        self.learning_improvement_points = row.get('Learning: puntos a mejorar', '')
-        self.asks_questions = row.get('Learning: Pregunta dudas', '')
-
-        # Behaviour Section
-        self.behavior_rating = row.get('Behaviour: rating', '')
-        self.helps_teacher = row.get('Behaviour: Ayuda a la profe', '')
-        self.has_friends_in_class = row.get('Behaviour: Tiene amigos en clase', '')
-        self.gets_distracted = row.get('Behaviour: Se distrae', '')
-        self.collaborates_with_peers = row.get('Behaviour: Colabora con compañeros', '')
-        self.follows_instructions = row.get('Behaviour: Sigue instrucciones', '')
-        self.respects_turns = row.get('Behaviour: Respeta turnos palabra', '')
-        self.cares_for_materials = row.get('Behaviour: Cuida material', '')
-        self.misbehavior_action = row.get('Behaviour: qué se ha hecho si tiene mal comportamiento', '')
-        self.behavior_improvement_points = row.get('Behaviour: puntos a mejorar', '')
-        self.behavior_strong_points = row.get('Behaviour: puntos fuertes', '')
-
-        # Work Section (for 'tweens' category)
-        self.work_rating = row.get('Work: rating', '')
-        self.work_participates = row.get('Work: Participa', '')
-        self.work_preferred_activities = row.get('Work: Actividades preferidas', '')
-        self.work_good_pronunciation = row.get('Work: Buena pronunciación', '')
-        self.work_efforts_to_communicate = row.get('Work: Se esfuerza por comunicarse en inglés', '')
-        self.work_confident_expression = row.get('Work: Se expresa con seguridad', '')
-        self.work_asks_questions = row.get('Work: Pregunta dudas', '')
-        self.work_helps_teacher = row.get('Work: Ayuda a la profe', '')
-        self.work_follows_instructions = row.get('Work: Sigue instrucciones', '')
-
-        # Performance Section (for 'tweens' category)
-        self.performance_rating = row.get('Performance: rating', '')
-        self.performance_understands = row.get('Perfomance: Comprende', '')
-        self.performance_uses_keywords = row.get('Perfomance: Usa palabaras clave', '')
-        self.performance_makes_complete_structures = row.get('Perfomance: Hace estructuras completas', '')
-        self.performance_example_sentences = row.get('Perfomance: Ejemplo de oraciones que hace', '')
-        self.performance_spells_correctly = row.get('Perfomance: puede deletrear correctamente', '')
-        self.performance_strong_points = row.get('Perfomance: puntos fuertes', '')
-        self.performance_improvement_points = row.get('Perfomance:  puntos a mejorar', '')
-
-        # Homework Section
-        self.homework = row.get('Homework', '')
-        self.homework_comment = row.get('Comentario Homework', '')
-
-        # Category (Sheet name)
+    def __init__(self, data_dict, category):
+        self.data = data_dict  # Store all student data as a dictionary
         self.category = category
+
+        # Additional processing if needed
+        # For example, clean up student name, etc.
+        self.data['student_name'] = self.data.get('Nombre alumno', '').split("1to1")[0].split("1to2")[0].strip()
+
+        # If needed, handle specific category adjustments
+        # Example:
+        # if self.category.lower() in ['tweens', 'teens']:
+        #     # Add or modify fields specific to tweens or teens
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

@@ -33,7 +33,7 @@ class ReportAutomation:
 
     def select_group(self, professor):
         group_selector = '.li_group'
-        self.page.wait_for_selector(group_selector, timeout=10000)  # Wait for the elements to be visible
+        self.page.wait_for_selector(group_selector, timeout=30000)  # Wait for the elements to be visible
         elements = self.page.query_selector_all(group_selector)
         print(f"Found {len(elements)} groups.")
         
@@ -48,12 +48,12 @@ class ReportAutomation:
         self.page.wait_for_load_state('networkidle')
 
     def navigate_to_term_reports(self):
-        self.page.wait_for_selector('.hamb', timeout=10000)  # Adjust the selector to the correct button
+        self.page.wait_for_selector('.hamb', timeout=30000)  # Adjust the selector to the correct button
         self.page.click('.hamb')  # Click on the dropdown menu to make it visible
 
         # Wait for the specific "Term Reports" option
         term_reports_selector = 'div.menu_obj2:has-text("Term Reports")'
-        self.page.wait_for_selector(term_reports_selector, timeout=10000)  # Ensure "Term Reports" is visible
+        self.page.wait_for_selector(term_reports_selector, timeout=30000)  # Ensure "Term Reports" is visible
 
         # Click on the "Term Reports" button
         self.page.click(term_reports_selector)
@@ -85,10 +85,10 @@ class ReportAutomation:
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
         term_column = 1
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
-        edit_button.wait_for(timeout=10000)
+        edit_button.wait_for(timeout=30000)
         edit_button.click()
 
-        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=10000)
+        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=30000)
 
         # Initialize scores dictionary
         scores = {}
@@ -153,10 +153,10 @@ class ReportAutomation:
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
         term_column = 1
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
-        edit_button.wait_for(timeout=10000)
+        edit_button.wait_for(timeout=30000)
         edit_button.click()
 
-        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=10000)
+        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=30000)
 
         # Define section mappings based on category
         section_mappings = {
@@ -193,7 +193,7 @@ class ReportAutomation:
 
         # Get the mapping for the current category
         print(category)
-        if 'tweens' in category.lower():
+        if 'tweens' in category.lower() or 'teens' in category.lower():
             category = 'tweens' 
         mappings = section_mappings.get(category.lower(), section_mappings['default'])
         print(mappings)

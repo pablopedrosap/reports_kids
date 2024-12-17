@@ -1,4 +1,4 @@
-from crewai import Agent, Task, Crew
+# from crewai import Agent, Task, Crew
 from langchain_openai import ChatOpenAI
 import json
 from pydantic import BaseModel
@@ -25,92 +25,112 @@ llm4o = ChatOpenAI(model="gpt-4o")
 llm4o_mini = ChatOpenAI(model="gpt-4o-mini")
 
 def generar_reporte(student):
+    # print(student)
+    # print(student.student_name)
+    # for attr, value in vars(student).items():
+    #     setattr(student, attr, str(value) if value is not None else '')
+
+
+    # # Determinar si la categoría del estudiante incluye prueba escrita
+    # courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
+    # include_written_test = student.category in courses_with_written_test
+
+    # # Construir la sección de datos del estudiante
+    # datos_estudiante = []
+
     print(student)
-    print(student.student_name)
-    for attr, value in vars(student).items():
-        setattr(student, attr, str(value) if value is not None else '')
+    print(student.data.get('student_name', ''))
 
+    # Convert all values to strings, handling None
+    student_data = {
+    k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
+    for k, v in student.data.items()
+    if k != 'Nombre grupo' and v is not None  # Exclude 'Nombre grupo' and None values
+}
 
-    # Determinar si la categoría del estudiante incluye prueba escrita
+    # Determine if the category includes written test
     courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
     include_written_test = student.category in courses_with_written_test
 
-    # Construir la sección de datos del estudiante
-    datos_estudiante = []
+    # Prepare data to pass to LLM
+    datos_estudiante = {k: v for k, v in student_data.items() if v.strip()}
+    print(datos_estudiante)
+
 
     # Sólo añadimos líneas si el valor no es vacío
-    if student.student_name.strip():
-        datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
-    if student.oral_test_score.strip():
-        datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
 
-    if include_written_test and student.written_test_score != 0:
-        datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+    # if student.student_name.strip():
+    #     datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
+    # if student.oral_test_score.strip():
+    #     datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
 
-    if student.enters_happy.strip():
-        datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
-    if student.positive_attitude.strip():
-        datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
-    if student.enthusiasm.strip():
-        datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
-    if student.initiative.strip():
-        datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
-    if student.differentiator.strip():
-        datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
-    if student.behavior_improvement_points.strip():
-        datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
-    if student.behavior_strong_points.strip():
-        datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
-    if student.has_friends_in_class.strip():
-        datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
-    if student.gets_distracted.strip():
-        datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
-    if student.collaborates_with_peers.strip():
-        datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
-    if student.respects_turns.strip():
-        datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
-    if student.cares_for_materials.strip():
-        datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
-    if student.misbehavior_action.strip():
-        datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
-    if student.participates.strip():
-        datos_estudiante.append(f"- Participa: {student.participates}")
-    if student.preferred_activities.strip():
-        datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
-    if student.good_pronunciation.strip():
-        datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
-    if student.efforts_to_communicate.strip():
-        datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
-    if student.confident_expression.strip():
-        datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
-    if student.asks_questions.strip():
-        datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
-    if student.helps_teacher.strip():
-        datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
-    if student.follows_instructions.strip():
-        datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
-    if student.understands.strip():
-        datos_estudiante.append(f"- Comprende: {student.understands}")
-    if student.uses_keywords.strip():
-        datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
-    if student.makes_complete_structures.strip():
-        datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
-    if student.example_sentences.strip():
-        datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
-    if student.learning_strong_points.strip():
-        datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
-    if student.learning_improvement_points.strip():
-        datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
-    if student.homework.strip():
-        datos_estudiante.append(f"- Deberes: {student.homework}")
+    # if include_written_test and student.written_test_score != 0:
+    #     datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+
+    # if student.enters_happy.strip():
+    #     datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
+    # if student.positive_attitude.strip():
+    #     datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
+    # if student.enthusiasm.strip():
+    #     datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
+    # if student.initiative.strip():
+    #     datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
+    # if student.differentiator.strip():
+    #     datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
+    # if student.behavior_improvement_points.strip():
+    #     datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
+    # if student.behavior_strong_points.strip():
+    #     datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
+    # if student.has_friends_in_class.strip():
+    #     datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
+    # if student.gets_distracted.strip():
+    #     datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
+    # if student.collaborates_with_peers.strip():
+    #     datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
+    # if student.respects_turns.strip():
+    #     datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
+    # if student.cares_for_materials.strip():
+    #     datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
+    # if student.misbehavior_action.strip():
+    #     datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
+    # if student.participates.strip():
+    #     datos_estudiante.append(f"- Participa: {student.participates}")
+    # if student.preferred_activities.strip():
+    #     datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
+    # if student.good_pronunciation.strip():
+    #     datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
+    # if student.efforts_to_communicate.strip():
+    #     datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
+    # if student.confident_expression.strip():
+    #     datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
+    # if student.asks_questions.strip():
+    #     datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
+    # if student.helps_teacher.strip():
+    #     datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
+    # if student.follows_instructions.strip():
+    #     datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
+    # if student.understands.strip():
+    #     datos_estudiante.append(f"- Comprende: {student.understands}")
+    # if student.uses_keywords.strip():
+    #     datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
+    # if student.makes_complete_structures.strip():
+    #     datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
+    # if student.example_sentences.strip():
+    #     datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
+    # if student.learning_strong_points.strip():
+    #     datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
+    # if student.learning_improvement_points.strip():
+    #     datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
+    # if student.homework.strip():
+    #     datos_estudiante.append(f"- Deberes: {student.homework}")
 
     # Unir todas las líneas filtradas
 
 
     dod = f'''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
 2. Cada sección debe tener al menos 300 caracteres.
-3. Usa el nombre del estudiante al menos una vez en cada sección, no uses los apellidos.
-4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
+3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos.
+4. En el apartado de motivación incluye ejemplos de actividades que el estudiante disfruta si las hay y estructuras de inglés que ha aprendido en aprendizaje.
 5. Las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
@@ -133,9 +153,6 @@ Escribe un informe detallado para el estudiante basado en sus datos de rendimien
 Sigue estas pautas de la Definición de Hecho:
 {dod}
 
-Motivación y Participación for rating: {student.motivation_rating}
-Aprendizaje for rating: {student.learning_rating}
-Comportamiento for rating: {student.behavior_rating}
 
 **Formato de Salida:**
 {{
@@ -203,7 +220,7 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
     with open('names.txt', 'a') as file:
-        file.write(f'\n{student.student_name}')
+        file.write(f'\n{student.data.get('student_name', '')}')
 
     try:
         # Convertir la respuesta a formato JSON si es válida
@@ -234,87 +251,104 @@ class ReportModelTweens(BaseModel):
 
 def generar_reporte_tweens(student):
     print(student)
-    print(student.student_name)
-    for attr, value in vars(student).items():
-        setattr(student, attr, str(value) if value is not None else '')
+    print(student.data.get('student_name', ''))
 
+
+    # print(student.student_name)
+    # for attr, value in vars(student).items():
+    #     setattr(student, attr, str(value) if value is not None else '')
+
+    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
+
+    student_data = {
+    k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
+    for k, v in student.data.items()
+    if k != 'Nombre grupo' and v is not None  # Exclude 'Nombre grupo' and None values
+}
+
+    # Determine if the category includes written test
     courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
     include_written_test = student.category in courses_with_written_test
 
-    # Verificar si la categoría del estudiante es "Tweens"
-    datos_estudiante = []
+    # Prepare data to pass to LLM
+    datos_estudiante = {k: v for k, v in student_data.items() if v.strip()}
+    print(datos_estudiante)
+    
 
-    # Sólo añadimos líneas si el valor no es vacío
-    if student.student_name.strip():
-        datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
-    if student.oral_test_score != '':
-        datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
+    # datos_estudiante = []
 
-    if student.written_test_score != '':
-        datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+    # if student.student_name.strip():
+    #     datos_estudiante.append(f"- Nombre: {student.student_name.split()[0]}")
+    # if student.oral_test_score != '':
+    #     datos_estudiante.append(f"- Puntuación de prueba oral: {student.oral_test_score}")
 
-    if student.enters_happy.strip():
-        datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
-    if student.positive_attitude.strip():
-        datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
-    if student.enthusiasm.strip():
-        datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
-    if student.initiative.strip():
-        datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
-    if student.differentiator.strip():
-        datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
-    if student.behavior_improvement_points.strip():
-        datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
-    if student.behavior_strong_points.strip():
-        datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
-    if student.has_friends_in_class.strip():
-        datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
-    if student.gets_distracted.strip():
-        datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
-    if student.collaborates_with_peers.strip():
-        datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
-    if student.respects_turns.strip():
-        datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
-    if student.cares_for_materials.strip():
-        datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
-    if student.misbehavior_action.strip():
-        datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
-    if student.participates.strip():
-        datos_estudiante.append(f"- Participa: {student.participates}")
-    if student.preferred_activities.strip():
-        datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
-    if student.good_pronunciation.strip():
-        datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
-    if student.efforts_to_communicate.strip():
-        datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
-    if student.confident_expression.strip():
-        datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
-    if student.asks_questions.strip():
-        datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
-    if student.helps_teacher.strip():
-        datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
-    if student.follows_instructions.strip():
-        datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
-    if student.understands.strip():
-        datos_estudiante.append(f"- Comprende: {student.understands}")
-    if student.uses_keywords.strip():
-        datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
-    if student.makes_complete_structures.strip():
-        datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
-    if student.example_sentences.strip():
-        datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
-    if student.learning_strong_points.strip():
-        datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
-    if student.learning_improvement_points.strip():
-        datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
-    if student.homework.strip():
-        datos_estudiante.append(f"- Deberes: {student.homework}")
+    # if student.written_test_score != '':
+    #     datos_estudiante.append(f"- Puntuación de prueba escrita: {student.written_test_score if student.written_test_score != 0 else 'no disponible de momento'}. No menciones la nota específica")
+
+    # if student.enters_happy.strip():
+    #     datos_estudiante.append(f"- Entra contento a clase: {student.enters_happy}")
+    # if student.my_way.strip():
+    #     datos_estudiante.append(f"- My Way comment: {student.my_way}")
+    # if student.positive_attitude.strip():
+    #     datos_estudiante.append(f"- Actitud positiva: {student.positive_attitude}")
+    # if student.enthusiasm.strip():
+    #     datos_estudiante.append(f"- Entusiasmo: {student.enthusiasm}")
+    # if student.initiative.strip():
+    #     datos_estudiante.append(f"- Toma iniciativa: {student.initiative}")
+    # if student.differentiator.strip():
+    #     datos_estudiante.append(f"- Dato diferenciador: {student.differentiator}")
+    # if student.behavior_improvement_points.strip():
+    #     datos_estudiante.append(f"- Puntos a mejorar en comportamiento: {student.behavior_improvement_points}")
+    # if student.behavior_strong_points.strip():
+    #     datos_estudiante.append(f"- Puntos fuertes en comportamiento: {student.behavior_strong_points}")
+    # if student.has_friends_in_class.strip():
+    #     datos_estudiante.append(f"- Tiene amigos en clase: {student.has_friends_in_class}")
+    # if student.gets_distracted.strip():
+    #     datos_estudiante.append(f"- Se distrae: {student.gets_distracted}")
+    # if student.collaborates_with_peers.strip():
+    #     datos_estudiante.append(f"- Colabora con compañeros: {student.collaborates_with_peers}")
+    # if student.respects_turns.strip():
+    #     datos_estudiante.append(f"- Respeta turnos de palabra: {student.respects_turns}")
+    # if student.cares_for_materials.strip():
+    #     datos_estudiante.append(f"- Cuida el material: {student.cares_for_materials}")
+    # if student.misbehavior_action.strip():
+    #     datos_estudiante.append(f"- Acciones en caso de mal comportamiento: {student.misbehavior_action}")
+    # if student.participates.strip():
+    #     datos_estudiante.append(f"- Participa: {student.participates}")
+    # if student.preferred_activities.strip():
+    #     datos_estudiante.append(f"- Actividades preferidas: {student.preferred_activities}")
+    # if student.good_pronunciation.strip():
+    #     datos_estudiante.append(f"- Buena pronunciación: {student.good_pronunciation}")
+    # if student.efforts_to_communicate.strip():
+    #     datos_estudiante.append(f"- Se esfuerza por comunicarse en inglés: {student.efforts_to_communicate}")
+    # if student.confident_expression.strip():
+    #     datos_estudiante.append(f"- Se expresa con seguridad: {student.confident_expression}")
+    # if student.asks_questions.strip():
+    #     datos_estudiante.append(f"- Pregunta dudas: {student.asks_questions}")
+    # if student.helps_teacher.strip():
+    #     datos_estudiante.append(f"- Ayuda a la profe: {student.helps_teacher}")
+    # if student.follows_instructions.strip():
+    #     datos_estudiante.append(f"- Sigue instrucciones: {student.follows_instructions}")
+    # if student.understands.strip():
+    #     datos_estudiante.append(f"- Comprende: {student.understands}")
+    # if student.uses_keywords.strip():
+    #     datos_estudiante.append(f"- Usa palabras clave: {student.uses_keywords}")
+    # if student.makes_complete_structures.strip():
+    #     datos_estudiante.append(f"- Hace estructuras completas: {student.makes_complete_structures}")
+    # if student.example_sentences.strip():
+    #     datos_estudiante.append(f"- Ejemplo de oraciones que hace en inglés (único al que le siguen paréntesis): {student.example_sentences}")
+    # if student.learning_strong_points.strip():
+    #     datos_estudiante.append(f"- Puntos fuertes de rendimiento: {student.learning_strong_points}")
+    # if student.learning_improvement_points.strip():
+    #     datos_estudiante.append(f"- Puntos a mejorar en rendimiento: {student.learning_improvement_points}")
+    # if student.homework.strip():
+    #     datos_estudiante.append(f"- Deberes: {student.homework}")
 
     # Unir todas las líneas filtradas
 
     dod = f'''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
 2. Cada sección debe tener al menos 300 caracteres.
-3. Usa el nombre del estudiante al menos una vez en cada sección, no uses los apellidos.
+3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos.
 4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
@@ -337,9 +371,6 @@ Escribe un informe detallado para el estudiante basado en sus datos de rendimien
 Sigue estas pautas de la Definición de Hecho:
 {dod}
 
-Comportamiento rating: {student.behavior_rating}
-Trabajo rating: {student.work_rating}
-Rendimiento rating: {student.performance_rating}
 """
 
     # Formato de salida específico para "Tweens" incluyendo Homework y Global Score
@@ -358,7 +389,7 @@ Rendimiento rating: {student.performance_rating}
         "Rating": "Excellent/Very good/Good/Satisfactory/Poor",
         "Comment": "<Detailed comment>"
     },
-    "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way".>",
+    "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way". >",
      "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
 Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
 Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
@@ -420,7 +451,7 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
     with open('names.txt', 'a') as file:
-        file.write(f'\n{student.student_name}')
+        file.write(f'\n{student.data.get('student_name', '')}')
 
 
     try:
