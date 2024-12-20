@@ -80,71 +80,83 @@ class ReportAutomation:
     def extract_scores(self, student_name, term, category):
         print(f"Extracting scores for {student_name}")
 
-
-        student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
-        term_column = 1 if term == 1 else (2 if term == 2 else 3)
-        term_column = 1
-        edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
-        edit_button.wait_for(timeout=30000)
-        edit_button.click()
-
-        self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=30000)
-
-        # Initialize scores dictionary
-        scores = {}
-
-        # Define section mappings based on category
-        section_mappings = {
-            'default': {
-                "Oral Test Score": 'oral_test_score',
-                "Written Test Score": 'written_test_score',
-                "Homework": 'homework_score'
-            },
-            'Tweens': {
-                "Oral Test Score": 'oral_test_score',
-                "Written Test Score": 'written_test_score',
-                "Homework": 'homework_score',
-                "Global Score": 'global_score'
-            },
-            'B&B': {
-                "Oral Test Score": 'oral_test_score',
-                "Written Test Score": 'written_test_score'
-            }
+        # Initialize scores with default values
+        scores = {
+            'oral_test_score': '',
+            'oral_test_score_comment': '',
+            'written_test_score': '',
+            'written_test_score_comment': '',
+            'homework_score': '',
+            'homework_score_comment': '',
+            'global_score': '',
+            'global_score_comment': ''
         }
 
-        # Get the mapping for the current category
-        mappings = section_mappings.get(category, section_mappings['default'])
+        try:
+            student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
+            term_column = 1
+            edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
+            edit_button.wait_for(timeout=30000)
+            edit_button.click()
 
-        # Locate all sections
-        sections = self.page.locator('div.label_tr_skill, div.label_tr')
-        section_count = sections.count()
+            self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=30000)
 
-        for i in range(section_count):
-            section = sections.nth(i)
-            section_title = section.inner_text().strip()
+            # Define section mappings based on category
+            section_mappings = {
+                'default': {
+                    "Oral Test Score": 'oral_test_score',
+                    "Written Test Score": 'written_test_score',
+                    "Homework": 'homework_score'
+                },
+                'Tweens': {
+                    "Oral Test Score": 'oral_test_score',
+                    "Written Test Score": 'written_test_score',
+                    "Homework": 'homework_score',
+                    "Global Score": 'global_score'
+                },
+                'B&B': {
+                    "Oral Test Score": 'oral_test_score',
+                    "Written Test Score": 'written_test_score'
+                }
+            }
 
-            for key, attr_name in mappings.items():
-                if key in section_title:
-                    # Locate the input field for the score
-                    input_field = section.locator('xpath=following-sibling::input[@type="number"][1]')
-                    value = input_field.get_attribute('value')
+            # Get the mapping for the current category
+            mappings = section_mappings.get(category, section_mappings['default'])
 
-                    # Store the value in the scores dictionary
-                    scores[attr_name] = value
+            # Locate all sections
+            sections = self.page.locator('div.label_tr_skill, div.label_tr')
+            section_count = sections.count()
 
-                    # Extract the comment associated with that section
-                    textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr") or contains(@class, "textarea_div")][1]')
-                    comment_text = textarea_locator.input_value()
-                    scores[f"{attr_name}_comment"] = comment_text
+            for i in range(section_count):
+                section = sections.nth(i)
+                section_title = section.inner_text().strip()
 
-                    break  # No need to check other keys for this section
+                for key, attr_name in mappings.items():
+                    if key in section_title:
+                        # Locate the input field for the score
+                        input_field = section.locator('xpath=following-sibling::input[@type="number"][1]')
+                        value = input_field.get_attribute('value')
 
-        # Go back to the previous page
-        self.page.go_back()
-        self.page.wait_for_load_state('networkidle')
+                        # Store the value in the scores dictionary
+                        scores[attr_name] = value
 
-        print(f"Extracted scores: {scores}")
-        return scores
+                        # Extract the comment associated with that section
+                        textarea_locator = section.locator('xpath=following::textarea[contains(@class, "input_comment_tr") or contains(@class, "textarea_div")][1]')
+                        comment_text = textarea_locator.input_value()
+                        scores[f"{attr_name}_comment"] = comment_text
+
+                        break  # No need to check other keys for this section
+
+            # Go back to the previous page
+            self.page.go_back()
+            self.page.wait_for_load_state('networkidle')
+
+            print(f"Extracted scores: {scores}")
+            return scores
+
+        except Exception as e:
+            print(f"Error extracting scores: {e}")
+            return scores  # Return default scores if there's an error
 
     def enter_report(self, student_name, term, report, category):
         print(student_name)
@@ -157,11 +169,11 @@ class ReportAutomation:
         edit_button.click()
 
         self.page.wait_for_selector('.input_comment_tr, .textarea_div', timeout=30000)
+        time.sleep(2)
 
-        # Define section mappings based on category
+        # Define section mappfings based on category
         section_mappings = {
             'default': {
-                "Audio Listening Frequency": "Audio Listening Frequency",
                 "Motivation": "Motivación_y_Participación",
                 "Learning": "Aprendizaje",
                 "Behaviour": "Comportamiento",
@@ -170,7 +182,6 @@ class ReportAutomation:
                 "General Assessment": "Evaluación_general"
             },
             'tweens': {
-                "Audio Listening Frequency": "Audio Listening Frequency",
                 "Behaviour": "Comportamiento",
                 "Work": "Trabajo",
                 "Performance": "Rendimiento",

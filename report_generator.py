@@ -17,9 +17,9 @@ class ReportModel(BaseModel):
     Motivación_y_Participación: ReportSection
     Aprendizaje: ReportSection
     Comportamiento: ReportSection
-    Nota_de_prueba_oral: str  # Solo se necesita el comentario
-    Nota_de_prueba_escrita: str  # Solo para B&B y tweens
-    Evaluación_general: str    # Solo se necesita el comentario
+    Nota_de_prueba_oral: str
+    Nota_de_prueba_escrita: Optional[str] = None  # Make this field optional
+    Evaluación_general: str
 
 llm4o = ChatOpenAI(model="gpt-4o")
 llm4o_mini = ChatOpenAI(model="gpt-4o-mini")
@@ -38,15 +38,14 @@ def generar_reporte(student):
     # # Construir la sección de datos del estudiante
     # datos_estudiante = []
 
-    print(student)
     print(student.data.get('student_name', ''))
 
     # Convert all values to strings, handling None
     student_data = {
-    k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
-    for k, v in student.data.items()
-    if k != 'Nombre grupo' and v is not None  # Exclude 'Nombre grupo' and None values
-}
+        k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
+        for k, v in student.data.items()
+        if k != 'Nombre grupo' and k != 'Profesora' and v is not None  # Exclude 'Nombre grupo' and None values
+    }
 
     # Determine if the category includes written test
     courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
@@ -54,7 +53,7 @@ def generar_reporte(student):
 
     # Prepare data to pass to LLM
     datos_estudiante = {k: v for k, v in student_data.items() if v.strip()}
-    print(datos_estudiante)
+
 
 
     # Sólo añadimos líneas si el valor no es vacío
@@ -144,7 +143,7 @@ def generar_reporte(student):
 15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
 16. Crucial que no te inventes ningún dato que no te he proporcionado. Como asumir el numero de alumnos o el género del profesor. Solo usa lo que sabes.
 17. Decir entrar al aula en vez de ‘’ingresar al aula’’, no decir "exitosamente", no hablar del alumno como un "recurso" o usar ninguna expresión latina, solo usar español de España.
-18. Solo una vez dar alguna pequeña oración de ánimo como: ‘’sigue así’’, ‘’bien hecho’’, ‘’well done!’’, ‘’awesome’’, ‘’excellent’’, ‘’way to go!’’.´
+18. Solo una vez dar alguna pequeña oración de ánimo como: sigue así, bien hecho, well done!, awesome, excellent, way to go!.
 { "19. Si el curso es mousy o linda, no hablar de 'práctica gramatical avanzada' ya que son pequeños." if 'mousy' in student.category.lower() or 'linda' in student.category.lower() else "" }
 '''
 
@@ -185,7 +184,7 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
     }},
     "Aprendizaje": {{
         "Rating": "Very good",
-        "Comment": "Elisa ha demostrado una buena comprensión de las estructuras básicas del inglés, utilizando frases como \\\"I like to play with my friends\\\" (Me gusta jugar con mis amigos). Aunque su uso de palabras clave ha sido adecuado, hay margen para el fortalecimiento de estructuras complejas y la expansión de su vocabulario. Elisa no duda en formular preguntas cuando encuentra dificultades, lo que refleja su constructiva curiosidad. Continúa esforzándose por comunicarse en inglés y su pronunciación ha mejorado notablemente. Un enfoque más centrado en la práctica oral y auditiva la beneficiaría aún más."
+        "Comment": "Elisa ha demostrado una buena comprensión de las estructuras básicas del ingl��s, utilizando frases como \\\"I like to play with my friends\\\" (Me gusta jugar con mis amigos). Aunque su uso de palabras clave ha sido adecuado, hay margen para el fortalecimiento de estructuras complejas y la expansión de su vocabulario. Elisa no duda en formular preguntas cuando encuentra dificultades, lo que refleja su constructiva curiosidad. Continúa esforzándose por comunicarse en inglés y su pronunciación ha mejorado notablemente. Un enfoque más centrado en la práctica oral y auditiva la beneficiaría aún más."
     }},
     "Comportamiento": {{
         "Rating": "Excellent",
@@ -250,7 +249,7 @@ class ReportModelTweens(BaseModel):
 '''bb lo detecta como'''
 
 def generar_reporte_tweens(student):
-    print(student)
+
     print(student.data.get('student_name', ''))
 
 
@@ -261,10 +260,10 @@ def generar_reporte_tweens(student):
     courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
 
     student_data = {
-    k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
-    for k, v in student.data.items()
-    if k != 'Nombre grupo' and v is not None  # Exclude 'Nombre grupo' and None values
-}
+        k: str(v).split()[0] if k == 'Nombre alumno' and v is not None else str(v)
+        for k, v in student.data.items()
+        if k != 'Nombre grupo' and k != 'Profesora' and v is not None  # Exclude 'Nombre grupo' and None values
+    }
 
     # Determine if the category includes written test
     courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
@@ -272,7 +271,7 @@ def generar_reporte_tweens(student):
 
     # Prepare data to pass to LLM
     datos_estudiante = {k: v for k, v in student_data.items() if v.strip()}
-    print(datos_estudiante)
+
     
 
     # datos_estudiante = []
@@ -350,6 +349,7 @@ def generar_reporte_tweens(student):
 2. Cada sección debe tener al menos 300 caracteres.
 3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos.
 4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
+5. No hace falta que las incluyas, pero si las hay, las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
 8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
@@ -362,7 +362,7 @@ def generar_reporte_tweens(student):
 15. No menciones verano o otros tiempos del año ya que no sabes en que trimestre está el alumno, tampoco menciones que no lo sabes. Tampoco menciones notas concretas aunque sí justificalas.
 16. Crucial que no te inventes ningún dato que no te he proporcionado. Como asumir el numero de alumnos o el género del profesor. Solo usa lo que sabes.
 17. Decir entrar al aula en vez de ‘’ingresar al aula’’, no decir "exitosamente", no hablar del alumno como un "recurso" o usar ninguna expresión latina, solo usar español de España.
-18. Dar alguna pequeña oración de ánimo como: ‘’sigue así’’, ‘’bien hecho’’, ‘’well done!’’, ‘’awesome’’, ‘’excellent’’, ‘’way to go!’’.´
+18. Solo una vez dar alguna pequeña oración de ánimo como: sigue así, bien hecho, well done!, awesome, excellent, way to go!.
 '''
 
     # Construir la parte inicial del prompt con las calificaciones
@@ -450,6 +450,12 @@ Esto es solo un ejemplo para que tengas una idea, el lenguaje debe ser claro y c
 
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
+    if informe.startswith('```'):
+        # Remove markdown code block formatting if present
+        informe = informe.split('```')[1]
+        if informe.startswith('json'):
+            informe = informe[4:]
+        informe = informe.strip()
     with open('names.txt', 'a') as file:
         file.write(f'\n{student.data.get('student_name', '')}')
 

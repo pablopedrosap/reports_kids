@@ -188,11 +188,6 @@ def load_processed_students():
             return set(line.strip() for line in file)
     return set()
 
-def save_processed_students(processed_students):
-    """Save processed student names to a text file."""
-    with open(PROCESSED_STUDENTS_FILE, 'w') as file:
-        for student_name in processed_students:
-            file.write(f"{student_name}\n")
 
 def map_columns(df, column_mapping):
     """
@@ -237,6 +232,7 @@ def process_reports(df_dict, username, password):
     :return: List of tuples containing StudentData and generated reports
     """
     processed_students = load_processed_students()
+
     automation = ReportAutomation(username, password)
     all_reports = []  # To collect all reports
     try:
@@ -277,12 +273,16 @@ def process_reports(df_dict, username, password):
                 # Apply necessary filters
                 center = student_dict.get('Centro', '')
                 if pd.isna(center):
-                    continue
+                    center = 'Valdebebas'
+                    # continue
 
                 course_field = student_dict.get('Curso', '')
-                if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
-                    print('Skipping invalid course')
-                    continue
+                try:
+                    if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
+                        print('Skipping invalid course')
+                        continue
+                except:
+                    pass
 
                 student_name = student_dict.get('Nombre alumno', '').strip()  # Extract only the first name
                 
@@ -310,7 +310,7 @@ def process_reports(df_dict, username, password):
                 # student_dict['written_test_score'] = scores.get('written_test_score', '')
                 # student_dict['homework_score'] = scores.get('homework_score', '')
 
-                # print(f"Assigned scores for {student_name}: {student_dict}")
+
 
                 # Create a StudentData instance with the sanitized dictionary
                 
@@ -329,7 +329,6 @@ def process_reports(df_dict, username, password):
                 processed_students.add(student_name)
 
         # Save updated list of processed students at the end of processing
-        save_processed_students(processed_students)
 
     except Exception as e:
         print(f"An error occurred: {e}")
