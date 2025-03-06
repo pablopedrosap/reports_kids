@@ -133,6 +133,8 @@ pyproject_hooks==1.1.0
 pysbd==0.3.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
 pytz==2024.1
 PyYAML==6.0.2
 qdrant-client==1.11.0
@@ -172,3 +174,4 @@ Werkzeug==3.0.3
 wrapt==1.16.0
 yarl==1.9.4
 zipp==3.20.0
+reportlab

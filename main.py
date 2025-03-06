@@ -20,7 +20,7 @@ app.secret_key = 'your_secret_key'  # Necessary for flashing messages
 
 URL = "https://myclassroom.kidsandus.es"
 ALLOWED_EXTENSIONS = {'xlsx'}
-PROCESSED_STUDENTS_FILE = "names.txt"
+PROCESSED_STUDENTS_FILE = "all_students.txt"
 
 # OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_API_KEY='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'
@@ -214,13 +214,19 @@ def sanitize_student_data(student_dict):
     """
     sanitized_data = {}
     for key, value in student_dict.items():
-        if isinstance(value, float) and value.is_integer():
-            sanitized_data[key] = int(value)
+        if isinstance(value, float):
+            if pd.isna(value):
+                sanitized_data[key] = ''
+            elif value.is_integer():
+                sanitized_data[key] = int(value)
+            else:
+                sanitized_data[key] = value  # Keep as float if not integer
         elif isinstance(value, str):
             sanitized_data[key] = value.strip()
         else:
             sanitized_data[key] = value
     return sanitized_data
+
 
 def process_reports(df_dict, username, password):
     """
@@ -250,12 +256,21 @@ def process_reports(df_dict, username, password):
             invalid_rows = ['ANIMAL PLANET 1', 'FAIRY TAIL 1']  # Add any other invalid titles here
             df = df[~df.iloc[:, 0].astype(str).isin(invalid_rows)]
 
-            # Find the header row index where 'Centro' appears in the first column
-            header_row_index = df[df.iloc[:, 0].astype(str).str.contains('Centro', case=False, na=False)].index
-            if len(header_row_index) == 0:
-                print(f"Header 'Centro' not found in sheet {category}")
+            # Limit the search to the first three rows for the header
+            max_header_search_rows = 3
+            header_found = False
+            for potential_header_row in range(max_header_search_rows):
+                if df.shape[0] <= potential_header_row:
+                    break  # Not enough rows to search
+                first_cell = str(df.iloc[potential_header_row, 0]).strip().lower()
+                if 'centro' in first_cell:
+                    header_row_index = potential_header_row
+                    header_found = True
+                    break
+
+            if not header_found:
+                print(f"Header containing 'Centro' not found within the first {max_header_search_rows} rows in sheet {category}")
                 continue
-            header_row_index = header_row_index[0]
 
             # Set the DataFrame's column names to the header row and drop header rows above
             df.columns = df.iloc[header_row_index]
@@ -276,16 +291,21 @@ def process_reports(df_dict, username, password):
                     center = 'Valdebebas'
                     # continue
 
-                course_field = student_dict.get('Curso', '')
-                try:
-                    if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
-                        print('Skipping invalid course')
-                        continue
-                except:
-                    pass
+                course_field = str(student_dict.get('Curso', ''))
 
-                student_name = student_dict.get('Nombre alumno', '').strip()  # Extract only the first name
+                if 'animal planet' in course_field.lower():
+                    course_field = course_field
+                # elif 'fairy tale' in course_field.lower():
+                #     course_field = 'Tweens 2'
+                else:
+                    try:
+                        if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
+                            print('Skipping invalid course')
+                            continue
+                    except:
+                        pass
                 
+                student_name = student_dict.get('Nombre alumno', '').strip()  
 
                 if not student_name:
                     print("Skipping student with no name.")
@@ -294,38 +314,42 @@ def process_reports(df_dict, username, password):
                 if student_name in processed_students:
                     print(f"Skipping already processed student: {student_name}")
                     continue
-          
 
                 # Navigate if changing groups
                 group_name = student_dict.get('Nombre grupo', '')
                 if group_name != current_group:
                     current_group = group_name
-                #     automation.navigate_to_reports(center.split()[0], student_dict.get('Curso', ''), group_name)
+                    automation.navigate_to_reports(center.split()[0], student_dict.get('Curso', ''), group_name)
 
-                # # Extract scores
-                # scores = automation.extract_scores(student_name, student_dict.get('term', 1), category)
+                # Extract scores
+                scores = automation.extract_scores(student_name, student_dict.get('term', 2), category)
 
-                # # Update student_dict with extracted scores
-                # student_dict['oral_test_score'] = scores.get('oral_test_score', '')
+                anterior_trimestre = scores
+
+                # Update student_dict with extracted scores
+                # student_dict[''] = scores.get('oral_test_score', '')
                 # student_dict['written_test_score'] = scores.get('written_test_score', '')
                 # student_dict['homework_score'] = scores.get('homework_score', '')
 
-
-
-                # Create a StudentData instance with the sanitized dictionary
-                
+                # # Create a StudentData instance with the sanitized dictionary
                 student = StudentData(student_dict, category)
 
                 # Generate and send report
                 if 'tweens' in category.lower() or 'teens' in category.lower():
-                    report = generar_reporte_tweens(student)
+                    report = generar_reporte_tweens(student, anterior_trimestre)
                 else:
-                    report = generar_reporte(student)
+                    report = generar_reporte(student, anterior_trimestre)
                 print("Generated Report:", report)
                 all_reports.append((student, report))
-                # automation.enter_report(student_name, student_dict.get('term', 1), report, category)
+                automation.enter_report(student_name, student_dict.get('term', 2), report, category)
 
                 # Mark as processed
+                with open('all_students.txt', 'a') as file:
+                    file.write(f"{student_dict}\n\n\n")
+
+                with open('all_reports.txt', 'a') as file:
+                    file.write(f"{report}\n\n\n")
+
                 processed_students.add(student_name)
 
         # Save updated list of processed students at the end of processing
@@ -335,7 +359,7 @@ def process_reports(df_dict, username, password):
         raise e  # Re-raise the exception to handle it in the calling function
     finally:
         automation.close()
-    
+
     return all_reports  # Return the collected reports
 
 class StudentData:
@@ -343,14 +367,12 @@ class StudentData:
         self.data = data_dict  # Store all student data as a dictionary
         self.category = category
 
-        # Additional processing if needed
-        # For example, clean up student name, etc.
-        self.data['student_name'] = self.data.get('Nombre alumno', '').split("1to1")[0].split("1to2")[0].strip()
+        # if "1to1" or "1to2" in self.data['student_name']:
+        #     save self.data['student_name'] in todo students
+        #     pass 
+        #     # next student
+        # self.data[''] = self.data.get('Nombre alumno', '').split("1to1")[0].split("1to2")[0].strip()
 
-        # If needed, handle specific category adjustments
-        # Example:
-        # if self.category.lower() in ['tweens', 'teens']:
-        #     # Add or modify fields specific to tweens or teens
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
