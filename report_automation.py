@@ -31,7 +31,7 @@ class ReportAutomation:
         course_selector = f'.li_course:has-text("{course_name}")'
         self.page.click(course_selector)
 
-    def select_group(self, professor):
+    def select_group(self, group_name):
         group_selector = '.li_group'
         self.page.wait_for_selector(group_selector, timeout=30000)  # Wait for the elements to be visible
         elements = self.page.query_selector_all(group_selector)
@@ -39,13 +39,71 @@ class ReportAutomation:
         
         for element in elements:
             text = element.inner_text()
-            if professor.lower() in text.lower():
+            if group_name in text:  # Check if group_name is a substring of the element's text
+                print(f"Clicking group: {text}")
                 element.click()
                 break
+    
 
     def click_begin(self):
         self.page.click('#selector_button')
         self.page.wait_for_load_state('networkidle')
+    def get_groups_by_pattern(self, group_pattern):
+        """
+        Returns a list of group elements that contain the provided pattern.
+        """
+        group_selector = '.li_group'
+        self.page.wait_for_selector(group_selector, timeout=30000)
+        elements = self.page.query_selector_all(group_selector)
+        matching = []
+        for element in elements:
+            text = element.inner_text()
+            if group_pattern in text:
+                matching.append(element)
+        return matching
+    def student_exists_in_current_group(self, student_name):
+        """
+        Checks if the student row is present on the current page.
+        """
+        return self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))').count() > 0
+
+    def navigate_to_student_in_group(self, school, course, group_pattern, student_name):
+        """
+        Navigate to group selection and try all groups matching the given pattern.
+        For each group, click and check if the student exists.
+        Returns True as soon as the student is found, or False if none of the groups contain the student.
+        """
+        # Return to group selection if needed.
+        change_group_selector = 'span.change_link'
+        if self.page.locator(change_group_selector).is_visible():
+            self.page.click(change_group_selector)
+            self.page.wait_for_load_state('networkidle')
+            print("Navigated back to group selection.")
+
+        self.select_school(school)
+        self.select_course(course)
+        
+        groups = self.get_groups_by_pattern(group_pattern)
+        print(f"Found {len(groups)} groups matching pattern '{group_pattern}'.")
+        
+        for i, group in enumerate(groups):
+            group_text = group.inner_text()
+            print(f"Trying group {i+1}: {group_text}")
+            group.click()
+            self.click_begin()
+            self.navigate_to_term_reports()
+            time.sleep(2)  # Wait a moment for the page to load
+
+            if self.student_exists_in_current_group(student_name):
+                print(f"Student {student_name} found in group: {group_text}")
+                return True
+            else:
+                print(f"Student {student_name} not found in group: {group_text}. Trying next group.")
+                # Navigate back to group selection before trying the next group.
+                self.page.go_back()
+                self.page.wait_for_load_state('networkidle')
+        print(f"Student {student_name} not found in any group matching pattern '{group_pattern}'.")
+        return False
 
     def navigate_to_term_reports(self):
         self.page.wait_for_selector('.hamb', timeout=30000)  # Adjust the selector to the correct button
@@ -61,22 +119,20 @@ class ReportAutomation:
 
 
     def navigate_to_reports(self, school, course, group):
+        """
+        (Optional: keep for cases where no student check is needed.)
+        """
         print(school, course, group)
-
-        print(school)
-        
-        change_group_selector = 'span.change_link'  
+        change_group_selector = 'span.change_link'
         if self.page.locator(change_group_selector).is_visible():
             self.page.click(change_group_selector)
             self.page.wait_for_load_state('networkidle')
             print("Navigated back to group selection.")
-
         self.select_school(school)
         self.select_course(course)
         self.select_group(group)
         self.click_begin()
         self.navigate_to_term_reports()
-
     
     def extract_scores(self, student_name, term, category):
         """
@@ -105,7 +161,7 @@ class ReportAutomation:
             # Extract full page text from the <body> element
             full_text = self.page.inner_text("body")
             extracted_data["full_text"] = full_text
-            print(f"Extracted full text: {full_text}")
+            # print(f"Extracted full text: {full_text}")
 
             # Additionally, extract the content of all textareas, which often hold the actual input values
             textarea_locator = self.page.locator("textarea")
@@ -115,7 +171,7 @@ class ReportAutomation:
                 ta_value = textarea_locator.nth(j).input_value()
                 all_textareas.append(ta_value)
             extracted_data["all_textareas"] = all_textareas
-            print(f"Extracted {textarea_count} textarea values.")
+            # print(f"Extracted {textarea_count} textarea values.")
 
             # Extract numeric scores and section-specific comments (if any)
             sections = self.page.locator('div.label_tr_skill, div.label_tr')

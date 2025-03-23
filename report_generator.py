@@ -33,6 +33,7 @@ En el apartado de motivación y participación, no se incluía el juego o activi
 En los informes a veces, destacaba una habilidad y después la criticaba. Por ejemplo “Sergio es un compañero excelente que siempre respeta a los demás” y poco más adelante ponía “A veces no respeta los turnos de palabra”, lo cual no tiene congruencia.
 A veces utiliza un vocabulario o estructuras más grandilocuentes, como por ejemplo “El alumno es un pilar fundamental para el funcionamiento de la clase”, lo cual es un poco excesivo para niños pequeños.
 Falta de concordancia de género hablando de ‘’el profesor’’ y ‘’la profesora’’ cuando no eran de ese género. (no dar pie a este error ya que no conoces el género)
+usar siempre mismos sinónimos, por ejemplo: 'lo que evidencia'. no uses la palabra 'evidencia'.
     '''
 
 def generar_reporte(student, anterior_trimestre):
@@ -47,7 +48,7 @@ def generar_reporte(student, anterior_trimestre):
     }
 
     # Determine if the category includes written test
-    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Tweens', 'Teens']
+    courses_with_written_test = ['B&B', 'Ben&Brenda', 'Ben&brenda', 'Tweens', 'Teens']
     include_written_test = student.category in courses_with_written_test
 
     # Prepare data to pass to LLM
@@ -59,9 +60,9 @@ def generar_reporte(student, anterior_trimestre):
 
 1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
 2. Cada sección debe tener al menos 300 caracteres, no más de 600.
-3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos.
+3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos, tampoco digas 'la/el estudiante ...).
 4. En el apartado de motivación incluye ejemplos de actividades que el estudiante disfruta si las hay y estructuras de inglés que ha aprendido en aprendizaje.
-5. Las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
+5. Las frases aprendidas en inglés deben aparecer en apartado 'learning' entre comillas y deben ir seguidas de las traducciones en español entre paréntesis, nunca al revés (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, o el nombre de las actividades si están en inglés, no otras cosas). Todo el texto aparte siempre en español.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante. No seas solo positivo, que se muestre también que puede mejorar.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
 8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
@@ -80,6 +81,7 @@ def generar_reporte(student, anterior_trimestre):
 -----
 errores que debes evitar:
 {errores_comunes}
+
 
 '''
 
@@ -103,20 +105,19 @@ Sigue estas pautas de la Definición de Hecho:
         "Rating": "Excellent/Very good/Good/Satisfactory",
         "Comment": "<Detailed comment>"
     }},
-    "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
+    "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo, oración completa): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
 Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
 Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
 Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya sea con una sola palabra o con la estructura completa, sin necesidad de que se le ayude.>",
-    {"\"Nota_de_prueba_escrita\": \"<Detailed comment>\"," if include_written_test else ""}
+    {"\"Nota_de_prueba_escrita\": \"<Detailed comment>\"," if include_written_test else "Añade esto si en el trimestre anterior también hubo written test comment: \"Nota_de_prueba_escrita\": \"<Detailed comment>\","}
     "Evaluación_general": "<Detailed comment>"
 }}
 
-**
-Estos son los datos del trimestre anterior, no tienes que mencionar nada de aquí ni de que estás comparando, simplemente sirve para que sepas de que alumno se trata:
-{anterior_trimestre}
-**
 
-**Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del anterior pero escribelo de manera más humana que el anterior y variando la estructura para evitar repeticiones.**
+{anterior_trimestre}
+
+
+**Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del anterior pero escribelo de manera más humana que el anterior y variando la estructura para evitar repeticiones. A parte de variar estructura, también usa sinónimos sin que sean palabras poco comunes, para no repetirte.**
 
 **ESENCIAL QUE SOLO USES DATOS DE AQUÍ Y NO TE INVENTES NINGÚN DATO NO PRESENTE. Datos del estudiante: **
 
@@ -132,15 +133,39 @@ Estos son los datos del trimestre anterior, no tienes que mencionar nada de aqu�
 """
 
     respuesta = client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="o3-mini",
         messages=[{"role": "user", "content": descripcion_tarea}],
-        response_format=ReportModel
+        response_format=ReportModel,
+        reasoning_effort='high'
     )
 
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
-    with open('names.txt', 'a') as file:
-        file.write(f"{student.data.get('student_name', '')},{student.category.lower()}\n")
+
+    print("Generated Report 1:", informe)
+
+    revision_tarea = f'''
+    Informe generado:\n\n{informe} 
+    
+    ------
+    Asegurate que cumpla con todos los requisitos:
+    {dod}
+
+    ------
+    Asegurate de que no aparezcan ninguno de estos errores:
+    {errores_comunes}
+
+    Solo corrige lo que tengas que cambiar del comment si hay algo, el rating dejalo igual siempre. nada más.
+'''
+    # respuesta = client.beta.chat.completions.parse(
+    #     model="o3-mini",
+    #     messages=[{"role": "user", "content": revision_tarea}],
+    #     response_format=ReportModel
+    # )
+
+    # informe = respuesta.choices[0].message.content
+
+    # print("Generated Report 2:", informe)
 
     try:
         # Convertir la respuesta a formato JSON si es válida
@@ -193,11 +218,13 @@ def generar_reporte_tweens(student, anterior_trimestre):
     # Prepare data to pass to LLM
     datos_estudiante = {k: v for k, v in student_data.items() if v.strip()}
 
-    dod = f'''1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
+    dod = f'''
+    curso: {student.category.lower()}
+1. Personaliza el informe y refleja el carácter y estilo de aprendizaje del estudiante.
 2. Cada sección debe tener al menos 300 caracteres, menos la de oral y writing test. Máximo 500-600.
-3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos.
+3. Usa el nombre del estudiante al menos una vez en cada sección, NO uses los apellidos, tampoco digas 'la/el estudiante ....
 4. Incluye ejemplos de actividades que el estudiante disfruta y estructuras de inglés que ha aprendido.
-5. No hace falta que las incluyas, pero si las hay, las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
+5. No hace falta que las incluyas, pero si las hay, las frases aprendidas en inglés entre comillas y las traducciones seguidas en español entre paréntesis (Solo las frases aprendidas que estén en inglés deben ser traducidas a español entre paréntesis, o el nombre de las actividades si están en inglés, nada más debe ir entre paréntesis) Todo el texto aparte siempre en español.
 6. Asegúrate de que el informe refleje con precisión el progreso, carácter y aptitudes del estudiante.
 7. Escribe en tercera persona, evitando declaraciones en primera persona.
 8. Enfócate en información relevante para el rendimiento en clase, evitando comentarios demasiado personales.
@@ -243,7 +270,7 @@ Sigue estas pautas de la Definición de Hecho:
         "Comment": "<Detailed comment>"
     },
     "My_Way": "<¿Cuáles son sus habilidades más fuertes?  aqui resume el tiempo activo en "My Way". >"**NO PONGAS este apartado si no tienes ningún dato al respecto.** *Se trata de una app, los alumnos hacen ejercicios escritos principalmente, y algunos orales, en el comentario destaca principalmente su expresión oral.*,
-     "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
+     "Nota_de_prueba_oral": "<(Aquí solo puedes responder una de estas 4 sin inventartelo, oración completa): Aceptable. Entiende la pregunta, pero es necesario darle el inicio de la palabra para que responda utilizando un término aislado.
 Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
 Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
 Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya sea con una sola palabra o con la estructura completa, sin necesidad de que se le ayude.>",
@@ -267,7 +294,7 @@ Estos son los datos del trimestre anterior, no tienes que mencionar nada de aqu�
 {anterior_trimestre}
 **
 
-**Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del anterior pero escribelo de manera más humana que el anterior y variando la estructura para evitar repeticiones.**
+**Ahora, utilizando los datos proporcionados a continuación para el estudiante, genera el informe siguiendo el estilo del anterior pero escribelo de manera más humana que el anterior y variando la estructura para evitar repeticiones. A parte de variar estructura, también usa sinónimos sin que sean palabras poco comunes, para no repetirte.**
 
 **ESENCIAL QUE SOLO USES DATOS DE AQUÍ Y NO TE INVENTES NINGÚN DATO NO PRESENTE. Datos del estudiante: **
 
@@ -284,13 +311,43 @@ Estos son los datos del trimestre anterior, no tienes que mencionar nada de aqu�
 
     # Generar el informe utilizando el modelo
     respuesta = client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="o3-mini",
         messages=[{"role": "user", "content": descripcion_tarea}],
-        response_format=ReportModelTweens
+        response_format=ReportModelTweens,
+        reasoning_effort='high'
     )
+
 
     # Extraer el contenido del informe
     informe = respuesta.choices[0].message.content
+
+    print("Generated Report 1:", informe)
+
+    revision_tarea = f'''
+    Informe generado:\n\n{informe} 
+    
+    ------
+    Asegurate que cumpla con todos los requisitos:
+    {dod}
+
+    ------
+    Asegurate de que no aparezcan ninguno de estos errores:
+    {errores_comunes}
+
+    Solo corrige lo que tengas que cambiar del comment si hay algo, el rating dejalo igual siempre. nada más.
+'''
+    # respuesta = client.beta.chat.completions.parse(
+    #     model="o3-mini",
+    #     messages=[{"role": "user", "content": revision_tarea}],
+    #     response_format=ReportModelTweens
+    # )
+
+    # informe = respuesta.choices[0].message.content
+
+    # print("Generated Report 2:", informe)
+
+
+
     if informe.startswith('```'):
         # Remove markdown code block formatting if present
         informe = informe.split('```')[1]

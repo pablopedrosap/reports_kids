@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 from typing import Optional
 import numpy as np
+import re
 
 load_dotenv()  # This loads the .env file
 
@@ -66,6 +67,11 @@ def save_all_reports_to_pdf(reports, output_file="Consolidated_Report.pdf"):
     for student, report in reports:
         # Add Student Header
         elements.append(Paragraph(f"Report for {student.data.get('student_name', 'N/A')}", heading_style))
+        
+
+        # 
+        # 
+
         
         # General Information Table
         general_info = [
@@ -180,13 +186,17 @@ def load_column_mapping(filepath="column_mapping.json"):
     with open(filepath, 'r', encoding='utf-8') as file:
         return json.load(file)
 
-def load_processed_students():
+def load_processed_students(student):
     """Load processed student names from a text file."""
+    
     if os.path.exists(PROCESSED_STUDENTS_FILE):
-        with open(PROCESSED_STUDENTS_FILE, 'r') as file:
-            # Read each line, strip any whitespace, and add to the set
-            return set(line.strip() for line in file)
-    return set()
+        with open(PROCESSED_STUDENTS_FILE, 'r', encoding='utf-8') as file:
+            for line in file:
+                if student in line:
+                    print(student)
+                    return True
+    return False
+
 
 
 def map_columns(df, column_mapping):
@@ -237,7 +247,6 @@ def process_reports(df_dict, username, password):
     :param password: Password for authentication
     :return: List of tuples containing StudentData and generated reports
     """
-    processed_students = load_processed_students()
 
     automation = ReportAutomation(username, password)
     all_reports = []  # To collect all reports
@@ -297,13 +306,13 @@ def process_reports(df_dict, username, password):
                     course_field = course_field
                 # elif 'fairy tale' in course_field.lower():
                 #     course_field = 'Tweens 2'
-                else:
-                    try:
-                        if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
-                            print('Skipping invalid course')
-                            continue
-                    except:
-                        pass
+                # else:
+                #     try:
+                #         if not course_field or any(x.lower() in course_field.lower() for x in ['fffff', '1fffff', 'anfffff']):
+                #             print('Skipping invalid course')
+                #             continue
+                #     except:
+                #         pass
                 
                 student_name = student_dict.get('Nombre alumno', '').strip()  
 
@@ -311,25 +320,46 @@ def process_reports(df_dict, username, password):
                     print("Skipping student with no name.")
                     continue
 
-                if student_name in processed_students:
+                if load_processed_students(student_name):
                     print(f"Skipping already processed student: {student_name}")
                     continue
 
                 # Navigate if changing groups
                 group_name = student_dict.get('Nombre grupo', '')
+
+                pattern = r"(\w+)\s+(\d{1,2})[.:](\d{2})\s*-\s*\d{1,2}[.:]\d{2}"
+                print(group_name)
+                match = re.search(pattern, group_name)
+
+                if match:
+                    day, hour, minute = match.groups()
+                    
+                    # Mapping days to their abbreviations
+                    day_abbr = {
+                        "lunes": "L",
+                        "martes": "M",
+                        "miércoles": "X",
+                        "jueves": "J",
+                        "viernes": "V",
+                        "sábado": "S",
+                        "domingo": "D"
+                    }
+                    
+                    # Convert day to proper format
+                    day_letter = day_abbr.get(day.lower(), day[0].upper())  # Default to first letter if not mapped
+                    
+                    group_name = f"{day_letter}_{hour}{minute}"
+                    print(group_name)
+
                 if group_name != current_group:
                     current_group = group_name
                     automation.navigate_to_reports(center.split()[0], student_dict.get('Curso', ''), group_name)
 
-                # Extract scores
-                scores = automation.extract_scores(student_name, student_dict.get('term', 2), category)
+ 
+                anterior_trimestre = automation.extract_scores(student_name, student_dict.get('term', 2), category)
+                
+                anterior_trimestre = f'** Estos son los datos del trimestre anterior, no tienes que mencionar nada de aquí ni de que estás comparando, simplemente sirve para que sepas de que alumno se trata:\n\n\n{anterior_trimestre}**'
 
-                anterior_trimestre = scores
-
-                # Update student_dict with extracted scores
-                # student_dict[''] = scores.get('oral_test_score', '')
-                # student_dict['written_test_score'] = scores.get('written_test_score', '')
-                # student_dict['homework_score'] = scores.get('homework_score', '')
 
                 # # Create a StudentData instance with the sanitized dictionary
                 student = StudentData(student_dict, category)
@@ -339,7 +369,7 @@ def process_reports(df_dict, username, password):
                     report = generar_reporte_tweens(student, anterior_trimestre)
                 else:
                     report = generar_reporte(student, anterior_trimestre)
-                print("Generated Report:", report)
+                
                 all_reports.append((student, report))
                 automation.enter_report(student_name, student_dict.get('term', 2), report, category)
 
@@ -350,7 +380,6 @@ def process_reports(df_dict, username, password):
                 with open('all_reports.txt', 'a') as file:
                     file.write(f"{report}\n\n\n")
 
-                processed_students.add(student_name)
 
         # Save updated list of processed students at the end of processing
 
