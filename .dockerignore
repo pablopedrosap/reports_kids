@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+all_reports.txt
+all_reports3.txt
+all_students.txt
+all_students3.txt
+names.txt
+*.xlsx
+reports/*.pdf
+
+# Documentation
+README.md
+CONTRIBUTING.md
+
+# Environment
+.env
+.env.local
+
+# Temporary
+*.tmp
+*.log

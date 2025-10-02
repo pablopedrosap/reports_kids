@@ -6,6 +6,7 @@ import pandas as pd
 import io
 from report_generator import generar_reporte, generar_reporte_tweens
 from report_automation import ReportAutomation
+
 import json
 import os
 from pydantic import BaseModel
@@ -17,14 +18,13 @@ import re
 load_dotenv()  # This loads the .env file
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Necessary for flashing messages
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')  # Necessary for flashing messages
 
 URL = "https://myclassroom.kidsandus.es"
 ALLOWED_EXTENSIONS = {'xlsx'}
-PROCESSED_STUDENTS_FILE = "all_students.txt"
+PROCESSED_STUDENTS_FILE = "all_students3.txt"
 
-# OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_API_KEY='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'
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise EnvironmentError("OPENAI_API_KEY not set in environment variables.")
 
@@ -66,7 +66,7 @@ def save_all_reports_to_pdf(reports, output_file="Consolidated_Report.pdf"):
     
     for student, report in reports:
         # Add Student Header
-        elements.append(Paragraph(f"Report for {student.data.get('student_name', 'N/A')}", heading_style))
+        elements.append(Paragraph(f"Report for {student.data.get('Nombre alumno', 'N/A')}", heading_style))
         
 
         # 
@@ -256,14 +256,16 @@ def process_reports(df_dict, username, password):
 
         for category, df in df_dict.items():
             print(f"Processing category: {category}")
+            if '1to1' in category.lower():
+                continue
 
             # Drop completely empty rows
             df.replace('', np.nan, inplace=True)
 
             # Now drop rows where all elements are NaN
             df = df.dropna(how='all')
-            invalid_rows = ['ANIMAL PLANET 1', 'FAIRY TAIL 1']  # Add any other invalid titles here
-            df = df[~df.iloc[:, 0].astype(str).isin(invalid_rows)]
+            # invalid_rows = ['ANIMAL PLANET 1', 'FAIRY TAIL 1']  # Add any other invalid titles here
+            # df = df[~df.iloc[:, 0].astype(str).isin(invalid_rows)]
 
             # Limit the search to the first three rows for the header
             max_header_search_rows = 3
@@ -304,6 +306,8 @@ def process_reports(df_dict, username, password):
 
                 if 'animal planet' in course_field.lower():
                     course_field = course_field
+
+
                 # elif 'fairy tale' in course_field.lower():
                 #     course_field = 'Tweens 2'
                 # else:
@@ -325,7 +329,10 @@ def process_reports(df_dict, username, password):
                     continue
 
                 # Navigate if changing groups
+                group_name_original = student_dict.get('Nombre grupo', '')
                 group_name = student_dict.get('Nombre grupo', '')
+
+                teacher_name = student_dict.get('Profesora', '')
 
                 pattern = r"(\w+)\s+(\d{1,2})[.:](\d{2})\s*-\s*\d{1,2}[.:]\d{2}"
                 print(group_name)
@@ -359,7 +366,7 @@ def process_reports(df_dict, username, password):
                 anterior_trimestre = automation.extract_scores(student_name, student_dict.get('term', 2), category)
                 
                 anterior_trimestre = f'** Estos son los datos del trimestre anterior, no tienes que mencionar nada de aquí ni de que estás comparando, simplemente sirve para que sepas de que alumno se trata:\n\n\n{anterior_trimestre}**'
-
+                # anterior_trimestre = ''
 
                 # # Create a StudentData instance with the sanitized dictionary
                 student = StudentData(student_dict, category)
@@ -371,13 +378,15 @@ def process_reports(df_dict, username, password):
                     report = generar_reporte(student, anterior_trimestre)
                 
                 all_reports.append((student, report))
-                automation.enter_report(student_name, student_dict.get('term', 2), report, category)
+                automation.enter_report(student_name, student_dict.get('term', 3), report, category)
+                
+                # automation.enter_report(course_field, group_name_original, teacher_name, student_name, student_dict.get('term', 3), report, category, student_dict)
 
                 # Mark as processed
-                with open('all_students.txt', 'a') as file:
+                with open('all_students3.txt', 'a') as file:
                     file.write(f"{student_dict}\n\n\n")
 
-                with open('all_reports.txt', 'a') as file:
+                with open('all_reports3.txt', 'a') as file:
                     file.write(f"{report}\n\n\n")
 
 

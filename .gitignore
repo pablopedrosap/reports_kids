@@ -1,0 +1,80 @@
+# Environment variables
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - sensitive data
+all_reports.txt
+all_reports3.txt
+all_students.txt
+all_students3.txt
+names.txt
+namest1.txt
+
+# Data files with potentially sensitive information
+*.xlsx
+!example_data.xlsx
+datos_reports.xlsx
+Datos_reports_Genie.xlsx
+students.xlsx
+All_Options_Calculations.xlsx
+Single_Sheet_Assignment_3_and_4.xlsx
+Single_Sheet_Assignment_3_and_4_FIXED.xlsx
+
+# Generated reports
+reports/*.pdf
+!reports/.gitkeep
+
+# Temporary files
+*.tmp
+*.log
+*.html
+archivo.html
+*.png
+*.csv
+kidsandus_links.csv
+
+# Stored data
+stored_kids/
+contact/
+
+# Python cache
+*.pyc

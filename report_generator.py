@@ -19,7 +19,9 @@ class ReportModel(BaseModel):
     Comportamiento: ReportSection
     Nota_de_prueba_oral: str
     Nota_de_prueba_escrita: Optional[str] = None  # Make this field optional
+    Deberes: str
     Evaluación_general: str
+
 
 llm4o = ChatOpenAI(model="gpt-4o")
 llm4o_mini = ChatOpenAI(model="gpt-4o-mini")
@@ -109,6 +111,8 @@ Sigue estas pautas de la Definición de Hecho:
 Bueno. Entiende la pregunta y responde con una palabra, aunque en ocasiones es necesario ayudarle con el inicio de la misma.
 Muy bueno. Entiende la pregunta y responde utilizando la palabra adecuada, casi sin ayuda.
 Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya sea con una sola palabra o con la estructura completa, sin necesidad de que se le ayude.>",
+    "Deberes": "<(hay que hacer el comentario sobre lo datos)>",
+
     {"\"Nota_de_prueba_escrita\": \"<Detailed comment>\"," if include_written_test else "Añade esto si en el trimestre anterior también hubo written test comment: \"Nota_de_prueba_escrita\": \"<Detailed comment>\","}
     "Evaluación_general": "<Detailed comment>"
 }}
@@ -133,10 +137,10 @@ Excelente. Responde adecuadamente a la pregunta realizada por el profesor, ya se
 """
 
     respuesta = client.beta.chat.completions.parse(
-        model="o3-mini",
+        model="o4-mini",
         messages=[{"role": "user", "content": descripcion_tarea}],
         response_format=ReportModel,
-        reasoning_effort='high'
+        # reasoning_effort='high'
     )
 
     # Extraer el contenido del informe
@@ -311,10 +315,10 @@ Estos son los datos del trimestre anterior, no tienes que mencionar nada de aqu�
 
     # Generar el informe utilizando el modelo
     respuesta = client.beta.chat.completions.parse(
-        model="o3-mini",
+        model="o4-mini",
         messages=[{"role": "user", "content": descripcion_tarea}],
         response_format=ReportModelTweens,
-        reasoning_effort='high'
+        # reasoning_effort='high'
     )
 
 

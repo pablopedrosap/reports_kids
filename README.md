@@ -1,294 +1,187 @@
-# Educational Report Automation System
+# Student Report Automation System
 
-An intelligent automation platform for educational institutions that streamlines the creation and submission of student progress reports. The system combines web scraping, AI-powered report generation, and automated form filling to eliminate manual reporting tasks for teachers and administrators.
+An automated system for generating personalized student progress reports for English language learning programs. The system integrates with web-based classroom management platforms to extract student data and generate comprehensive, AI-powered educational assessments.
 
 ## Features
 
-### Core Functionality
-- **Automated Report Generation**: AI-powered creation of personalized student progress reports
-- **Web Automation**: Seamless integration with Kids&Us educational platform
-- **Batch Processing**: Handles multiple Excel files with hundreds of student records
-- **Multi-Language Support**: Generates reports in Spanish with proper educational terminology
-- **PDF Consolidation**: Combines all reports into professional PDF documents
-
-### AI-Powered Report Creation
-- **GPT-4/O3 Integration**: Uses advanced language models for natural, human-like report writing
-- **Personalized Content**: Tailors each report to individual student performance and characteristics
-- **Multi-Category Support**: Handles different course levels (Babies, Tweens, Teens, Ben&Brenda)
-- **Historical Context**: Incorporates previous term data for comprehensive progress tracking
+- **Automated Report Generation**: Uses OpenAI's GPT models to create personalized, detailed student reports in Spanish
+- **Web Scraping Integration**: Automatically extracts student performance data from online classroom platforms
+- **Multi-Category Support**: Handles different age groups and course levels (Babies, Tweens, Teens, etc.)
+- **Batch Processing**: Processes multiple students and generates consolidated PDF reports
+- **Customizable Templates**: Different report structures for various course categories
+- **Quality Assurance**: Built-in validation to ensure reports meet educational standards
 
 ## Technology Stack
 
-### Backend Technologies
-- **Python 3.9+** - Core programming language
-- **Flask** - Web application framework
-- **Playwright** - Browser automation and web scraping
-- **Pandas** - Data processing and Excel handling
-- **ReportLab** - Professional PDF generation
+- **Backend**: Python 3.x, Flask
+- **AI/ML**: OpenAI API (GPT-4o, o4-mini)
+- **Web Automation**: Selenium WebDriver
+- **PDF Generation**: ReportLab
+- **Data Processing**: Pandas, NumPy
+- **Frontend**: HTML templates
 
-### AI & Language Processing
-- **OpenAI GPT-4/O3** - Advanced report generation
-- **Structured Output Parsing** - JSON-formatted report validation
-- **Pydantic Models** - Type-safe data validation
-
-### Web Automation
-- **Playwright Sync API** - Reliable browser automation
-- **Form Automation** - Automated data entry and report submission
-- **Session Management** - Persistent login and navigation states
-
-## Architecture
+## Project Structure
 
 ```
-Excel Upload Interface (Flask)
-    ↓
-Data Processing Pipeline (Pandas)
-    ↓
-Web Automation Engine (Playwright)
-    ├── Login & Navigation
-    ├── Student Data Extraction
-    └── Historical Data Retrieval
-    ↓
-AI Report Generation (OpenAI)
-    ├── Previous Term Context
-    ├── Personalized Content Creation
-    └── Multi-Category Processing
-    ↓
-Automated Report Submission
-    ├── Form Field Mapping
-    ├── Rating Selection
-    └── Comment Input
-    ↓
-PDF Generation & Consolidation
+├── main.py                     # Flask application entry point
+├── report_generator.py         # AI-powered report generation logic
+├── report_automation.py        # Web scraping and automation
+├── templates/                  # HTML templates for web interface
+├── reports/                    # Generated PDF reports output
+├── requirements.txt            # Python dependencies
+└── Dockerfile                  # Container configuration
 ```
 
-## Installation
+## Setup Instructions
 
 ### Prerequisites
+
+- Python 3.8+
+- Chrome/Chromium browser (for Selenium)
+- OpenAI API key
+
+### Installation
+
+1. Clone the repository:
 ```bash
-pip install flask pandas playwright python-dotenv pydantic openai reportlab
-playwright install chromium
+git clone <repository-url>
+cd reports_kids
 ```
 
-### Environment Setup
-Create a `.env` file:
-```env
-OPENAI_API_KEY=your_openai_api_key
+2. Create a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-### Project Structure
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
-project/
-├── main.py                    # Flask application entry point
-├── report_automation.py       # Playwright automation logic
-├── report_generator.py        # AI report generation
-├── templates/
-│   └── upload.html           # File upload interface
-├── reports/                  # Generated PDF outputs
-└── data/                     # Processing workspace
+
+4. Create a `.env` file in the project root:
+```bash
+OPENAI_API_KEY=your_api_key_here
+```
+
+5. Configure credentials for the classroom platform in your `.env` file.
+
+### Running the Application
+
+**Development mode:**
+```bash
+python main.py
+```
+
+The application will be available at `http://localhost:8080`
+
+**Docker deployment:**
+```bash
+docker build -t report-automation .
+docker run -p 8080:8080 --env-file .env report-automation
 ```
 
 ## Usage
 
-### Starting the Application
-```bash
-python main.py
+1. Access the web interface at `http://localhost:8080`
+2. Enter credentials for the classroom management system
+3. Upload Excel files containing student data
+4. The system will:
+   - Process each student's performance data
+   - Generate personalized reports using AI
+   - Create a consolidated PDF with all reports
+5. Download the generated reports from the `reports/` directory
+
+## Report Categories
+
+- **Babies & Toddlers**: Focus on engagement and comprehension indicators
+- **Kids Courses**: Comprehensive reports covering motivation, learning, behavior, homework, and tests
+- **Tweens & Teens**: Advanced reports including written/oral assessments and skills analysis
+
+## Data Format
+
+Input Excel files should contain the following columns:
+
+| Column Name | Description | Example |
+|------------|-------------|---------|
+| Centro | School name | "Center Name" |
+| Curso | Course level | "Course 1", "Tweens 2" |
+| Nombre grupo | Group schedule | "Monday 16:00 - 17:00" |
+| Profesora | Teacher name | "Teacher Name" |
+| Nombre alumno | Student name | "Student Name" |
+| Motivación y participación | Participation score (1-4) | "3" |
+| Aprendizaje | Learning score (1-4) | "4" |
+| Comportamiento | Behavior score (1-4) | "4" |
+| Deberes | Homework notes | "Always completes" |
+| Actividad favorita | Favorite activity | "Role-playing games" |
+| Frases aprendidas | Learned phrases (English/Spanish) | "I like cats. / Me gustan los gatos." |
+| Nota oral | Oral test score | "3" |
+| Nota escrita | Written test score (if applicable) | "4" |
+| term | Term number | 1, 2, or 3 |
+
+**Note**: Different course categories may require different columns. Tweens/Teens courses include additional fields for work habits and performance.
+
+## Security Notes
+
+- Never commit `.env` files or files containing API keys
+- Ensure sensitive student data is handled in compliance with privacy regulations
+- The system includes automatic tracking of processed students to prevent duplicates
+
+## Development
+
+### Adding New Report Templates
+
+Modify `report_generator.py` and define new Pydantic models for different report structures.
+
+### Customizing AI Prompts
+
+Edit the prompt templates in `generar_reporte()` and `generar_reporte_tweens()` functions to adjust report generation behavior.
+
+## Architecture Overview
+
 ```
-Access the web interface at `http://localhost:8080`
-
-### Processing Workflow
-1. **Upload Excel Files**: Upload one or more Excel files containing student data
-2. **Provide Credentials**: Enter Kids&Us platform login credentials  
-3. **Automated Processing**: System processes each student automatically
-4. **Report Generation**: AI creates personalized reports for each student
-5. **Platform Submission**: Reports are automatically submitted to the platform
-6. **PDF Export**: Consolidated PDF report is generated for download
-
-## Key Components
-
-### 1. Report Automation Engine (`ReportAutomation`)
-```python
-class ReportAutomation:
-    def login(self)                           # Platform authentication
-    def navigate_to_reports(self, ...)        # Navigate to student groups
-    def extract_scores(self, ...)             # Extract historical data
-    def enter_report(self, ...)               # Submit generated reports
-```
-
-**Key Features:**
-- Persistent browser sessions with Chromium
-- Intelligent navigation between schools, courses, and groups
-- Robust error handling and retry logic
-- Historical data extraction for context
-
-### 2. AI Report Generator (`generar_reporte`)
-```python
-def generar_reporte(student, anterior_trimestre):
-    # Generates comprehensive student reports using GPT-4/O3
-    # Returns structured JSON with ratings and comments
-```
-
-**Report Sections:**
-- **Motivación y Participación**: Student engagement and participation
-- **Aprendizaje**: Learning progress and skill development  
-- **Comportamiento**: Classroom behavior assessment
-- **Evaluaciones**: Oral and written test performance
-- **Evaluación General**: Overall progress summary
-
-### 3. Data Processing Pipeline
-- **Excel Parsing**: Handles multiple sheets and formats
-- **Column Mapping**: Flexible field mapping system
-- **Data Sanitization**: Cleans and validates input data
-- **Duplicate Prevention**: Tracks processed students
-
-### 4. Multi-Category Support
-- **Standard Courses**: Babies, Kids courses with basic assessment
-- **Advanced Courses**: Tweens/Teens with comprehensive evaluation
-- **Ben&Brenda**: Specialized curriculum handling
-- **Custom Adaptations**: Category-specific report formatting
-
-## Advanced Features
-
-### Intelligent Student Navigation
-- **Pattern Matching**: Finds students across multiple groups
-- **Flexible Search**: Handles name variations and scheduling changes
-- **Context Preservation**: Maintains navigation state between students
-
-### Historical Context Integration
-```python
-def extract_scores(self, student_name, term, category):
-    # Extracts comprehensive previous term data
-    # Returns structured context for AI processing
-```
-
-### Professional Report Generation
-- **Natural Language Processing**: Human-like report writing
-- **Educational Standards**: Aligned with Spanish educational practices
-- **Quality Assurance**: Built-in error checking and validation
-- **Consistency Maintenance**: Standardized tone and format
-
-### Automated Quality Control
-```python
-errores_comunes = '''
-- Incomplete reports despite available information
-- Inconsistent gender references
-- Excessive or inappropriate vocabulary
-- Missing required translations
-- Contradictory assessments
-'''
+┌─────────────┐
+│   Flask     │  Web interface for file uploads
+│   Server    │
+└──────┬──────┘
+       │
+       ├──────> Excel Parser (Pandas)
+       │        Reads student data from uploaded files
+       │
+       ├──────> Report Generator (OpenAI GPT)
+       │        AI-powered personalized report creation
+       │
+       ├──────> Web Automation (Playwright)
+       │        Navigates classroom platform and submits reports
+       │
+       └──────> PDF Generator (ReportLab)
+                Creates consolidated reports
 ```
 
-## Report Structure
+## Real-World Deployment
 
-### Standard Report Format
-```json
-{
-    "Motivación_y_Participación": {
-        "Rating": "Excellent/Very good/Good/Satisfactory",
-        "Comment": "Detailed 300-600 character assessment"
-    },
-    "Aprendizaje": {
-        "Rating": "Excellent/Very good/Good/Satisfactory", 
-        "Comment": "Learning progress and skills acquired"
-    },
-    "Comportamiento": {
-        "Rating": "Excellent/Very good/Good/Satisfactory",
-        "Comment": "Classroom behavior assessment"
-    },
-    "Nota_de_prueba_oral": "Standardized oral assessment",
-    "Nota_de_prueba_escrita": "Written test evaluation",
-    "Evaluación_general": "Overall progress summary"
-}
-```
+This system has been successfully deployed across more than 5 English language learning centers in Spain, demonstrating:
 
-### Tweens/Teens Extended Format
-Additional sections for advanced courses:
-- **Trabajo**: Work habits and study skills
-- **Rendimiento**: Performance across all skills
-- **My_Way**: App-based learning assessment
-- **Deberes**: Homework completion and quality
-- **Nota_Global**: Overall grade justification
+- **Time Savings**: Reduces report writing from ~10 min/student to seconds
+- **Consistency**: Ensures all reports meet educational standards
+- **Personalization**: Each report is unique and tailored to the student
+- **Quality**: AI-powered content is reviewed and refined through validation
 
-## Performance Optimization
+## Limitations & Considerations
 
-### Batch Processing
-- **Concurrent Processing**: Handles multiple students simultaneously
-- **Session Reuse**: Maintains browser sessions across students
-- **Smart Navigation**: Minimizes page loads and transitions
+- Requires valid credentials for the classroom management system
+- OpenAI API usage incurs costs based on usage
+- Web scraping may be affected by platform UI changes
+- Suitable for batch processing but not real-time operations
 
-### Error Handling
-- **Retry Logic**: Automatic recovery from temporary failures
-- **Graceful Degradation**: Continues processing despite individual errors
-- **Comprehensive Logging**: Detailed error tracking and debugging
+## Contributing
 
-### Resource Management
-- **Memory Optimization**: Efficient handling of large datasets
-- **Browser Management**: Proper cleanup and resource release
-- **File Processing**: Streaming Excel processing for large files
-
-## Security Considerations
-
-### Authentication
-- **Secure Credential Handling**: Environment-based credential storage
-- **Session Security**: Proper session management and cleanup
-- **Data Privacy**: Local processing with minimal external exposure
-
-### Data Protection
-- **Student Privacy**: Compliant with educational data protection standards
-- **Audit Trail**: Complete processing history for accountability
-- **Access Control**: Web interface with secure file handling
-
-## Quality Assurance
-
-### Report Quality Standards
-- **Length Requirements**: 300-600 characters per section
-- **Language Standards**: Proper Spanish educational terminology
-- **Consistency Checks**: Automated validation of report coherence
-- **Personalization**: Individual student name integration
-
-### Content Guidelines
-- **Positive Reinforcement**: Constructive feedback approach
-- **Age-Appropriate Language**: Suitable for different age groups
-- **Cultural Sensitivity**: Spanish educational context awareness
-- **Professional Tone**: Maintains educational standards
-
-## Monitoring & Maintenance
-
-### System Monitoring
-- **Processing Logs**: Detailed operation tracking
-- **Error Reporting**: Comprehensive error categorization
-- **Performance Metrics**: Processing speed and success rates
-
-### Regular Maintenance
-- **Database Cleanup**: Processed student record management
-- **Browser Updates**: Playwright and Chromium maintenance
-- **AI Model Updates**: OpenAI API version management
-
-## Future Enhancements
-
-### Planned Features
-- **Multi-Language Support**: Additional language options
-- **Advanced Analytics**: Student progress trend analysis
-- **Integration APIs**: Direct platform integrations
-- **Mobile Interface**: Responsive design improvements
-
-### Scalability Improvements
-- **Cloud Deployment**: Distributed processing capabilities
-- **Database Integration**: Persistent data storage
-- **API Development**: Third-party integration support
-- **Performance Optimization**: Enhanced processing speeds
-
-## Support & Documentation
-
-### User Support
-- **Processing Guides**: Step-by-step usage instructions
-- **Troubleshooting**: Common issue resolution
-- **Best Practices**: Optimal workflow recommendations
-- **Training Materials**: User education resources
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This system is designed for educational institution use with appropriate student data privacy and security considerations. All rights reserved.
+This project is for educational and demonstration purposes. Not licensed for commercial use.
 
-## Technical Support
+## Contact
 
-For technical issues, configuration assistance, or feature requests, please refer to the system documentation or contact the development team.
+For questions about this project or collaboration opportunities, please open an issue on GitHub.

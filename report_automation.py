@@ -1,5 +1,6 @@
 from playwright.sync_api import sync_playwright
 import time
+import os
 
 
 class ReportAutomation:
@@ -7,10 +8,11 @@ class ReportAutomation:
         self.username = username
         self.password = password
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(
-        executable_path="/Users/pablopedrosa/Library/Caches/ms-playwright/chromium-1140/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
-        headless=False
-        )
+
+        # Use headless mode from environment variable, default to True for production
+        headless = os.environ.get('HEADLESS_BROWSER', 'true').lower() == 'true'
+
+        self.browser = self.playwright.chromium.launch(headless=headless)
         self.page = self.browser.new_page()
         
 
@@ -149,7 +151,7 @@ class ReportAutomation:
         try:
             # Locate the student row and click the edit button to open the report
             student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
-            term_column = 1  # Adjust if needed based on term selection logic
+            term_column = 2  # Adjust if needed based on term selection logic
             edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
             edit_button.wait_for(timeout=30000)
             edit_button.click()
@@ -338,7 +340,7 @@ class ReportAutomation:
         student_row = self.page.locator(f'tr:has(td.td_left:has-text("{student_name}"))')
         print(student_row)
         term_column = 1 if term == 1 else (2 if term == 2 else 3)
-        term_column = 2
+        term_column = 3
         edit_button = student_row.locator(f'td.td_center:nth-child({term_column + 1}) .edit_camp')
         edit_button.wait_for(timeout=30000)
         edit_button.click()
@@ -354,7 +356,7 @@ class ReportAutomation:
                 "Behaviour": "Comportamiento",
                 "Oral Test Score": "Nota_de_prueba_oral",
                 "Written Test Score": "Nota_de_prueba_escrita",
-                "General Assessment": "Evaluación_general"
+                "General assessment": "Evaluación_general"
             },
             'tweens': {
                 "Behaviour": "Comportamiento",
@@ -365,7 +367,7 @@ class ReportAutomation:
                 "Oral Test Score": "Nota_de_prueba_oral",
                 "Written Test Score": "Nota_de_prueba_escrita",
                 "Homework": "Deberes",
-                "General Assessment": "Evaluación_general"
+                "General assessment": "Evaluación_general"
             },
             'b&b': {
                 "Motivation": "Motivación_y_Participación",
@@ -373,7 +375,7 @@ class ReportAutomation:
                 "Behaviour": "Comportamiento",
                 "Oral Test Score": "Nota_de_prueba_oral",
                 "Written Test Score": "Nota_de_prueba_escrita",
-                "General Assessment": "Evaluación_general"
+                "General assessment": "Evaluación_general"
             }
         }
 
